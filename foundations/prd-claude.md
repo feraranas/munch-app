@@ -4,7 +4,7 @@ Product Requirements Document (PRD)
 
 **1. Executive Summary**
 
-*Product Name*: SplitCheck (working title)
+*Product Name*: Munchers (working title)
 
 *Product Vision*: Streamline the restaurant payment process by enabling customers to seamlessly split bills through their mobile devices, eliminating manual calculation and reducing payment friction.
 
