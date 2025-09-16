@@ -1,4 +1,5 @@
 import React from 'react';
+import SentryHelloWorldButtons from './SentryHelloWorld';
 
 const LandingPage: React.FC = () => {
   return (
@@ -15,6 +16,7 @@ const LandingPage: React.FC = () => {
           </p>
         </div>
       </div>
+      <SentryHelloWorldButtons />
     </div>
   );
 };
