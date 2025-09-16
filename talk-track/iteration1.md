@@ -13,13 +13,18 @@
 `QRGenerator.ts`
 
 3. Scaffold Go API service with basic QR code generation endpoint
+4. Implement QR code generation with static hardcoded order ID
+5. Create simple landing page that displays when scanning QR code
+6. Set up basic database schema for orders
 
 `go.mod`
 `main.go`
 `handlers.go`
 
-Implement QR code generation with static hardcoded order ID
-Create simple landing page that displays when scanning QR code
-Set up basic database schema for orders
+7. Additional setup files
+
+`Makefile`
+`docker-compose.yml`
 
 `Prompt`: Transform the Frontend foundation to Typescript. Moving forward we will only use Typescript.
+

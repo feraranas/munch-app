@@ -1,6 +1,8 @@
 import React from 'react';
+import * as Sentry from '@sentry/react';
+import SentryHelloWorldButtons from './SentryHelloWorld';
 
-function LandingPage() {
+const LandingPage: React.FC = () => {
   return (
     <div className="container">
       <div className="card">
@@ -15,8 +17,9 @@ function LandingPage() {
           </p>
         </div>
       </div>
+      <SentryHelloWorldButtons />
     </div>
   );
-}
+};
 
-export default LandingPage;
+export default Sentry.withProfiler(LandingPage);
