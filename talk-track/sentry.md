@@ -21,6 +21,18 @@ const root = createRoot(container);
 root.render(<App />);
 ```
 
+## Sentry Source maps
+
+`npx @sentry/wizard@latest -i sourcemaps`
+
+Follow the wizard instructions
+
+or
+
+`npm install @sentry/cli --save-dev`
+
+https://docs.sentry.io/platforms/javascript/guides/react/sourcemaps/uploading/create-react-app/
+
 ## Apply Cursor Rules
 
 These examples should be used as guidance when configuring Sentry functionality within a project.
