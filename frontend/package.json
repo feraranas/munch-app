@@ -38,11 +38,15 @@
     ]
   },
   "devDependencies": {
+    "@sentry/cli": "^2.53.0",
     "@types/jest": "^30.0.0",
     "@types/node": "^24.5.0",
     "@types/react": "^19.1.13",
     "@types/react-dom": "^19.1.9",
     "@types/react-router-dom": "^5.3.3",
+    "typescript": "^5.9.2"
+  },
+  "overrides": {
     "typescript": "^5.9.2"
   }
 }
