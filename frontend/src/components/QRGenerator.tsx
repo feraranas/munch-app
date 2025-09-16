@@ -1,9 +1,13 @@
 import React, { useState } from 'react';
 
-function QRGenerator() {
-  const [orderId, setOrderId] = useState('ORDER-001');
-  const [qrCodeUrl, setQrCodeUrl] = useState('');
-  const [loading, setLoading] = useState(false);
+interface QRResponse {
+  qrCodeUrl: string;
+}
+
+const QRGenerator: React.FC = () => {
+  const [orderId, setOrderId] = useState<string>('ORDER-001');
+  const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
+  const [loading, setLoading] = useState<boolean>(false);
 
   const generateQR = async () => {
     setLoading(true);
@@ -17,7 +21,7 @@ function QRGenerator() {
       });
       
       if (response.ok) {
-        const data = await response.json();
+        const data: QRResponse = await response.json();
         setQrCodeUrl(data.qrCodeUrl);
       } else {
         alert('Failed to generate QR code');
@@ -44,7 +48,7 @@ function QRGenerator() {
           <input
             type="text"
             value={orderId}
-            onChange={(e) => setOrderId(e.target.value)}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setOrderId(e.target.value)}
             style={{
               width: '100%',
               padding: '10px',
@@ -96,6 +100,6 @@ function QRGenerator() {
       </div>
     </div>
   );
-}
+};
 
 export default QRGenerator;

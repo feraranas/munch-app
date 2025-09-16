@@ -1,6 +1,6 @@
 import React from 'react';
 
-function LandingPage() {
+const LandingPage: React.FC = () => {
   return (
     <div className="container">
       <div className="card">
@@ -17,6 +17,6 @@ function LandingPage() {
       </div>
     </div>
   );
-}
+};
 
 export default LandingPage;

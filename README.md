@@ -18,6 +18,13 @@ This is the foundation iteration that includes:
 - Go 1.21+
 - Make (optional)
 
+### Run script to test repository health
+
+```bash
+chmod +x test-setup.sh
+./test-setup.sh
+```
+
 ### Backend Setup
 
 ```bash

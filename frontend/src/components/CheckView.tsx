@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 
-function CheckView() {
-  const { orderId } = useParams();
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+interface RouteParams {
+  orderId: string;
+}
+
+const CheckView: React.FC = () => {
+  const { orderId } = useParams<keyof RouteParams>() as RouteParams;
+  const [loading, setLoading] = useState<boolean>(true);
+  const [error] = useState<string | null>(null);
 
   useEffect(() => {
     // Simulate loading for now
@@ -63,6 +67,6 @@ function CheckView() {
       </div>
     </div>
   );
-}
+};
 
 export default CheckView;

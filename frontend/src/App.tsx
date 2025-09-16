@@ -4,7 +4,7 @@ import LandingPage from './components/LandingPage';
 import CheckView from './components/CheckView';
 import QRGenerator from './components/QRGenerator';
 
-function App() {
+const App: React.FC = () => {
   return (
     <Router>
       <div className="App">
@@ -16,6 +16,6 @@ function App() {
       </div>
     </Router>
   );
-}
+};
 
 export default App;
