@@ -18,7 +18,14 @@ Sentry.init({
   integrations: [
     // Send console.log, console.warn, and console.error calls as logs to Sentry
     Sentry.consoleLoggingIntegration({ levels: ["log", "warn", "error"] }),
-    Sentry.browserTracingIntegration(),
+    // React Router v7 integration for automatic route tracking
+    Sentry.reactRouterV7BrowserTracingIntegration({
+      useEffect: React.useEffect,
+      useLocation: require("react-router-dom").useLocation,
+      useNavigationType: require("react-router-dom").useNavigationType,
+      createRoutesFromChildren: require("react-router-dom").createRoutesFromChildren,
+      matchRoutes: require("react-router-dom").matchRoutes,
+    }),
   ],
 });
 

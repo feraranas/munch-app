@@ -1,4 +1,5 @@
 import React from 'react';
+import * as Sentry from '@sentry/react';
 import SentryHelloWorldButtons from './SentryHelloWorld';
 
 const LandingPage: React.FC = () => {
@@ -21,4 +22,4 @@ const LandingPage: React.FC = () => {
   );
 };
 
-export default LandingPage;
+export default Sentry.withProfiler(LandingPage);

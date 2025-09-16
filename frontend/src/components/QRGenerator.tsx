@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-
+import * as Sentry from '@sentry/react';
 interface QRResponse {
   qrCodeUrl: string;
 }
@@ -102,4 +102,4 @@ const QRGenerator: React.FC = () => {
   );
 };
 
-export default QRGenerator;
+export default Sentry.withProfiler(QRGenerator);

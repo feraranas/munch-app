@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-
+import * as Sentry from '@sentry/react';
 interface RouteParams {
   orderId: string;
 }
@@ -69,4 +69,4 @@ const CheckView: React.FC = () => {
   );
 };
 
-export default CheckView;
+export default Sentry.withProfiler(CheckView);
