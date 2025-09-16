@@ -27,3 +27,4 @@
 `docker-compose.yml`
 
 `Prompt`: Transform the Frontend foundation to Typescript. Moving forward we will only use Typescript.
+
