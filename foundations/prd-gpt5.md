@@ -127,6 +127,7 @@ There is no seamless way today to connect the restaurant’s POS system with a c
 - POS mock API: serve dummy order (JSON with items, qty, prices).
 - Display check in customer’s browser after scanning QR.
 - Store order ID + items in DB.
+- Develop the frontend with Mobile First principles.
 
 *Iteration 3 – Real-Time Session*
 

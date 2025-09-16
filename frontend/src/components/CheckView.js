@@ -10,7 +10,7 @@ function CheckView() {
     // Simulate loading for now
     const timer = setTimeout(() => {
       setLoading(false);
-    }, 1000);
+    }, 2000);
 
     return () => clearTimeout(timer);
   }, [orderId]);
@@ -19,8 +19,8 @@ function CheckView() {
     return (
       <div className="container">
         <div className="card">
-          <h2>Loading your check...</h2>
-          <p>Please wait while we fetch your order details.</p>
+          <h2>Cargando tu cuenta...</h2>
+          <p>Porfavor espera mientras preparamos los detalles de tu cuenta.</p>
         </div>
       </div>
     );
@@ -30,7 +30,7 @@ function CheckView() {
     return (
       <div className="container">
         <div className="card">
-          <h2>Error</h2>
+          <h2>Error, llama al mesero</h2>
           <p>{error}</p>
         </div>
       </div>
@@ -40,13 +40,13 @@ function CheckView() {
   return (
     <div className="container">
       <div className="card">
-        <h2>Your Check</h2>
-        <p><strong>Order ID:</strong> {orderId}</p>
+        <h2>Tu cuenta</h2>
+        <p><strong>Orden ID:</strong> {orderId}</p>
         
         <div style={{ marginTop: '20px' }}>
-          <h3>Order Details</h3>
+          <h3>Detalles</h3>
           <p style={{ color: '#6c757d' }}>
-            This is where the live receipt will appear once connected to the POS system.
+            Aqui es donde estará el recibo en tiempo real una vez que nos conectemos al POS (Point of Sale) del restaurante.
           </p>
           
           <div style={{ 
