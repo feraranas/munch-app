@@ -1,5 +1,5 @@
 # Complete Dockerfile for backend directory
-_Exported on 9/17/2025 at 06:18:49 CST from Cursor (1.5.11)_
+_Exported on 9/17/2025 at 06:47:15 CST from Cursor (1.5.11)_
 
 ---
 
@@ -745,4 +745,254 @@ feat: Add complete Docker setup for Go backend
 
 Tested: Both development and production builds successful
 ```
+
+---
+
+**User**
+
+I've built the munch-app-backend image by running `docker build -t munch-app-backend` now run `docker run -p 8080:8080 -v $(pwd):/app -v /app/bin munch-app-backend`
+
+---
+
+**Cursor**
+
+I'll run the Docker container with the specified command to test the backend image.
+
+Perfect! The container started successfully and I can see that air is working (live reloading tool), but there's an issue with the SQLite CGO configuration in the development environment. The error shows:
+
+```
+Binary was compiled with 'CGO_ENABLED=0', go-sqlite3 requires cgo to work. This is a stub
+```
+
+This is happening because the development stage is using the Alpine-based Go image where air is compiling the Go code without CGO enabled. Let me fix this by updating the Dockerfile to ensure CGO is enabled in the development environment as well.
+
+```plaintext
+Binary was compiled with 'CGO_ENABLED=0', go-sqlite3 requires cgo to work. This is a stub
+```
+
+```dockerfile
+# Multi-stage Dockerfile for Go backend
+
+# Development stage
+FROM golang:1.21-alpine AS development
+
+# Install build dependencies for CGO and SQLite
+RUN apk add --no-cache gcc musl-dev
+
+# Install air for live reloading in development (using compatible version)
+RUN go install github.com/cosmtrek/air@v1.40.4
+
+# Set working directory
+WORKDIR /app
+
+# Copy go mod and sum files
+COPY go.mod go.sum ./
+
+# Download dependencies
+RUN go mod download
+
+# Copy source code
+COPY . .
+
+# Expose port 8080
+EXPOSE 8080
+
+# Default command for development (with hot reload)
+CMD ["air", "-c", ".air.toml"]
+
+# Build stage
+FROM golang:1.21-bullseye AS build
+
+# Set working directory
+WORKDIR /app
+
+# Copy go mod and sum files
+COPY go.mod go.sum ./
+
+# Download dependencies
+RUN go mod download
+
+# Copy source code
+COPY . .
+
+# Build the application with CGO enabled for SQLite
+RUN CGO_ENABLED=1 GOOS=linux go build -o main .
+
+# Production stage
+FROM alpine:latest AS production
+
+# Install ca-certificates for HTTPS requests and sqlite
+RUN apk --no-cache add ca-certificates sqlite
+
+# Set working directory
+WORKDIR /root/
+
+# Copy the binary from build stage
+COPY --from=build /app/main .
+
+# Expose port 8080
+EXPOSE 8080
+
+# Run the binary
+CMD ["./main"]
+
+# Default stage (development)
+FROM development AS default
+
+```
+
+Now I also need to update the `.air.toml` configuration to ensure CGO is enabled when air builds the application:
+
+```plaintext
+root = "."
+testdata_dir = "testdata"
+tmp_dir = "tmp"
+
+[build]
+  args_bin = []
+  bin = "./tmp/main"
+  cmd = "CGO_ENABLED=1 go build -o ./tmp/main ."
+  delay = 1000
+  exclude_dir = ["assets", "tmp", "vendor", "testdata"]
+  exclude_file = []
+  exclude_regex = ["_test.go"]
+  exclude_unchanged = false
+  follow_symlink = false
+  full_bin = ""
+  include_dir = []
+  include_ext = ["go", "tpl", "tmpl", "html"]
+  include_file = []
+  kill_delay = "0s"
+  log = "build-errors.log"
+  poll = false
+  poll_interval = 0
+  rerun = false
+  rerun_delay = 500
+  send_interrupt = false
+  stop_on_error = false
+
+[color]
+  app = ""
+  build = "yellow"
+  main = "magenta"
+  runner = "green"
+  watcher = "cyan"
+
+[log]
+  main_only = false
+  time = false
+
+[misc]
+  clean_on_exit = false
+
+[screen]
+  clear_on_rebuild = false
+  keep_scroll = true
+
+```
+
+Now let's rebuild the Docker image with the CGO support for development:
+
+Great! Now let's test the container again with the fixed CGO support:
+
+I see the same SQLite compatibility issue is occurring in the development environment with Alpine Linux. The Alpine musl-dev library doesn't fully support all the SQLite C functions that go-sqlite3 expects.
+
+Let me fix this by switching the development stage to also use a Debian-based image like the build stage, which will be more compatible with SQLite:
+
+```dockerfile
+# Multi-stage Dockerfile for Go backend
+
+# Development stage
+FROM golang:1.21-bullseye AS development
+
+# Install air for live reloading in development (using compatible version)
+RUN go install github.com/cosmtrek/air@v1.40.4
+
+# Set working directory
+WORKDIR /app
+
+# Copy go mod and sum files
+COPY go.mod go.sum ./
+
+# Download dependencies
+RUN go mod download
+
+# Copy source code
+COPY . .
+
+# Expose port 8080
+EXPOSE 8080
+
+# Default command for development (with hot reload)
+CMD ["air", "-c", ".air.toml"]
+
+# Build stage
+FROM golang:1.21-bullseye AS build
+
+# Set working directory
+WORKDIR /app
+
+# Copy go mod and sum files
+COPY go.mod go.sum ./
+
+# Download dependencies
+RUN go mod download
+
+# Copy source code
+COPY . .
+
+# Build the application with CGO enabled for SQLite
+RUN CGO_ENABLED=1 GOOS=linux go build -o main .
+
+# Production stage
+FROM alpine:latest AS production
+
+# Install ca-certificates for HTTPS requests and sqlite
+RUN apk --no-cache add ca-certificates sqlite
+
+# Set working directory
+WORKDIR /root/
+
+# Copy the binary from build stage
+COPY --from=build /app/main .
+
+# Expose port 8080
+EXPOSE 8080
+
+# Run the binary
+CMD ["./main"]
+
+# Default stage (development)
+FROM development AS default
+
+```
+
+Now let's rebuild the Docker image with the Debian-based development stage:
+
+Perfect! Now let's test the container again with the Debian-based development environment:
+
+Excellent! 🎉 The backend is now running successfully! 
+
+**Success Summary:**
+- ✅ **Container Started**: The munch-app-backend container is running properly
+- ✅ **CGO/SQLite Working**: No more CGO errors - SQLite database is working
+- ✅ **Air Live Reload**: Development environment with hot reloading is active
+- ✅ **Server Running**: Gin web server started successfully on port 8080
+- ✅ **Routes Configured**: All API endpoints are properly registered:
+  - `POST /api/qr/generate` - QR code generation
+  - `GET /api/orders/:id` - Get order by ID  
+  - `POST /api/orders` - Create new order
+  - `GET /health` - Health check endpoint
+
+The container is now running in development mode with:
+- **Port mapping**: 8080:8080 (accessible at localhost:8080)
+- **Volume mounting**: Local code mounted for live reloading
+- **SQLite database**: Properly initialized and ready
+
+**Fixed Issues:**
+1. **CGO Problem**: Switched development stage from Alpine to Debian-bullseye for better SQLite compatibility
+2. **Air Configuration**: Updated `.air.toml` to build with `CGO_ENABLED=1`
+3. **Live Reloading**: Air is watching for file changes and will automatically rebuild/restart
+
+The backend Docker setup is now complete and fully functional! You can test the API endpoints by making requests to `http://localhost:8080/health` or any of the other endpoints. 🚀
 
