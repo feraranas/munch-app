@@ -1,0 +1,10 @@
+---
+alwaysApply: false
+description: These examples should be used as guidance when configuring Datadog functionality within a project.
+---
+
+# Error / Exception Tracking
+
+# Tracing Examples
+
+## Custom Span instrumentation in component actions

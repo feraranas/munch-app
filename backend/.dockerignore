@@ -1,0 +1,38 @@
+# Ignore build artifacts
+bin/
+tmp/
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+
+# Ignore test files
+*_test.go
+testdata/
+
+# Ignore IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Ignore git
+.git/
+.gitignore
+
+# Ignore logs
+*.log
+
+# Ignore OS files
+.DS_Store
+Thumbs.db
+
+# Ignore development dependencies
+air
+.air.toml
+
+# Ignore documentation
+*.md
+Makefile
