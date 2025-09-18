@@ -1,7 +1,7 @@
 # Multi-stage Dockerfile for Go backend
 
 # Development stage
-FROM golang:1.21-bullseye AS development
+FROM golang:1.23-bullseye AS development
 
 # Install air for live reloading in development (using compatible version)
 RUN go install github.com/cosmtrek/air@v1.40.4
@@ -25,7 +25,7 @@ EXPOSE 8080
 CMD ["air", "-c", ".air.toml"]
 
 # Build stage
-FROM golang:1.21-bullseye AS build
+FROM golang:1.23-bullseye AS build
 
 # Set working directory
 WORKDIR /app
