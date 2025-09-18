@@ -2,6 +2,8 @@ version: '3.8'
 
 services:
   frontend:
+    container_name: frontend
+    restart: always
     build:
       context: ./frontend
       dockerfile: Dockerfile
@@ -32,10 +34,11 @@ services:
       - /app/bin
     environment:
       - GIN_MODE=debug
-      - DD_SERVICE=backend
-      - DD_ENV=dev
+      - DD_SERVICE=munch-app-backend
+      - DD_ENV=beta
       - DD_VERSION=0.0.1
       - DD_AGENT_HOST=datadog-agent
+      - DD_SITE=us5.datadoghq.com
     depends_on:
       - datadog-agent
 
@@ -47,6 +50,7 @@ services:
       - DD_API_KEY=${DD_API_KEY}
       - DD_APM_ENABLED=true
       - DD_APM_NON_LOCAL_TRAFFIC=true
+      - DD_SITE=us5.datadoghq.com
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - /proc/:/host/proc/:ro
