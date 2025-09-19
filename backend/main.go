@@ -78,6 +78,7 @@ func (app *App) initRouter() {
 		api.POST("/qr/generate", app.generateQR)
 		api.GET("/orders/:id", app.getOrder)
 		api.POST("/orders", app.createOrder)
+		api.POST("/pos/mock-order", app.mockPOSOrder)
 	}
 
 	// Health check
