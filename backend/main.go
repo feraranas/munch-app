@@ -18,8 +18,18 @@ type App struct {
 	Router *gin.Engine
 }
 
+type QRSession struct {
+	ID           string  `json:"id" gorm:"primaryKey"`           // QR-ID (persistent)
+	QRImageData  string  `json:"qr_image_data" gorm:"type:text"` // Base64 QR image
+	CurrentOrder *string `json:"current_order,omitempty"`        // Current active order ID
+	TableNumber  *string `json:"table_number,omitempty"`         // Optional table identifier
+	CreatedAt    int64   `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt    int64   `json:"updated_at" gorm:"autoUpdateTime"`
+}
+
 type Order struct {
 	ID        string  `json:"id" gorm:"primaryKey"`
+	QRSession string  `json:"qr_session"`             // Links to QRSession.ID
 	Items     string  `json:"items" gorm:"type:text"` // JSON string for now
 	Total     float64 `json:"total"`
 	Status    string  `json:"status"` // open, paid, closed
@@ -56,7 +66,7 @@ func (app *App) initDB() error {
 	}
 
 	// Auto migrate the schema
-	return app.DB.AutoMigrate(&Order{})
+	return app.DB.AutoMigrate(&QRSession{}, &Order{})
 }
 
 func (app *App) initRouter() {
@@ -75,9 +85,12 @@ func (app *App) initRouter() {
 	// Routes
 	api := app.Router.Group("/api")
 	{
-		api.POST("/qr/generate", app.generateQR)
+		api.POST("/qr/create", app.createQRSession)
+		api.GET("/qr/:qrId", app.getOrderByQR)
 		api.GET("/orders/:id", app.getOrder)
 		api.POST("/orders", app.createOrder)
+		api.GET("/menu/items", app.getMenuItems)
+		api.POST("/pos/mock-order", app.mockPOSOrder)
 	}
 
 	// Health check

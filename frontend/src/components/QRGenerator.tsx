@@ -2,84 +2,113 @@ import React, { useState } from 'react';
 import * as Sentry from '@sentry/react';
 interface QRResponse {
   qrCodeUrl: string;
+  qrId: string;
+  checkUrl: string;
+  tableNumber?: string;
 }
 
 const QRGenerator: React.FC = () => {
-  const [orderId, setOrderId] = useState<string>('ORDER-001');
-  const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
+  const [tableNumber, setTableNumber] = useState<string>('');
+  const [qrSession, setQrSession] = useState<QRResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
-
-  const generateQR = async () => {
+  
+  const createQRSession = async () => {
     setLoading(true);
     try {
-      const response = await fetch('http://localhost:8080/api/qr/generate', {
+      const response = await fetch('http://localhost:8080/api/qr/create', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ orderId }),
+        body: JSON.stringify({ tableNumber: tableNumber.trim() }),
       });
       
       if (response.ok) {
         const data: QRResponse = await response.json();
-        setQrCodeUrl(data.qrCodeUrl);
+        setQrSession(data);
       } else {
-        alert('Failed to generate QR code');
+        alert('Failed to create QR session');
       }
     } catch (error) {
-      console.error('Error generating QR code:', error);
+      console.error('Error creating QR session:', error);
       alert('Error connecting to backend. Make sure the Go server is running on port 8080.');
     }
     setLoading(false);
   };
 
-  const checkUrl = `${window.location.origin}/check/${orderId}`;
-
   return (
     <div className="container">
       <div className="card">
-        <h2>Generador de QR</h2>
-        <p>Genera códigos QR para recibos y mesas de restaurante.</p>
+        <h2>🖼️ Generador de QR Permanente</h2>
+        <p>Crea códigos QR permanentes para mesas del restaurante.</p>
         
         <div style={{ marginBottom: '20px' }}>
-          <label style={{ display: 'block', marginBottom: '8px' }}>
-            Orden ID:
+          <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
+            Número de Mesa (Opcional):
           </label>
           <input
             type="text"
-            value={orderId}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setOrderId(e.target.value)}
+            value={tableNumber}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setTableNumber(e.target.value)}
             style={{
               width: '100%',
-              padding: '10px',
-              border: '1px solid #ddd',
-              borderRadius: '4px',
+              padding: '12px',
+              border: '2px solid #e9ecef',
+              borderRadius: '8px',
               fontSize: '16px'
             }}
-            placeholder="Ingresa el ID de la orden"
+            placeholder="Ej: Mesa 1, Mesa A, Terraza 5"
           />
         </div>
 
         <button 
           className="btn" 
-          onClick={generateQR}
-          disabled={loading || !orderId}
+          onClick={createQRSession}
+          disabled={loading}
         >
-          {loading ? 'Generando...' : 'Genera un código QR'}
+          {loading ? 'Creando QR...' : '🖼️ Crear QR Permanente'}
         </button>
 
-        {qrCodeUrl && (
-          <div style={{ marginTop: '30px', textAlign: 'center' }}>
-            <h3>Codigo QR Generado!</h3>
-            <img 
-              src={qrCodeUrl} 
-              alt="QR Code" 
-              style={{ maxWidth: '300px', height: 'auto' }}
-            />
-            <p style={{ marginTop: '10px', fontSize: '14px', color: '#6c757d' }}>
-                Escanea este código QR para ver la cuenta: <br />
-              <code>{checkUrl}</code>
-            </p>
+        {qrSession && (
+          <div style={{ marginTop: '30px' }}>
+            <h3>✅ QR Permanente Creado!</h3>
+            <div style={{ 
+              padding: '20px', 
+              backgroundColor: '#f8f9fa', 
+              borderRadius: '8px',
+              marginBottom: '20px'
+            }}>
+              <p><strong>QR-ID:</strong> <code style={{ backgroundColor: '#e9ecef', padding: '4px 8px', borderRadius: '4px' }}>{qrSession.qrId}</code></p>
+              {qrSession.tableNumber && <p><strong>Mesa:</strong> {qrSession.tableNumber}</p>}
+              <p><strong>URL del Cliente:</strong> <code>{qrSession.checkUrl}</code></p>
+            </div>
+            
+            <div style={{ textAlign: 'center' }}>
+              <img 
+                src={qrSession.qrCodeUrl} 
+                alt="QR Code" 
+                style={{ maxWidth: '300px', height: 'auto', border: '2px solid #e9ecef', borderRadius: '8px' }}
+              />
+              <p style={{ marginTop: '15px', fontSize: '14px', color: '#6c757d' }}>
+                💡 Este QR es permanente y se puede imprimir para la mesa
+              </p>
+            </div>
+            
+            <div style={{ 
+              marginTop: '20px', 
+              padding: '15px', 
+              backgroundColor: '#d1ecf1', 
+              border: '1px solid #bee5eb',
+              borderRadius: '8px'
+            }}>
+              <h4 style={{ margin: '0 0 10px 0' }}>🔗 Cómo usar este QR:</h4>
+              <ol style={{ margin: '0', paddingLeft: '20px' }}>
+                <li>Copia el <strong>QR-ID</strong> de arriba</li>
+                <li>Ve al <a href="/admin/pos" style={{ color: '#007bff' }}>Sistema POS</a></li>
+                <li>Pega el QR-ID y crea órdenes para esta mesa</li>
+                <li>Los clientes verán las órdenes automáticamente al escanear</li>
+              </ol>
+            </div>
           </div>
         )}
 
@@ -89,13 +118,16 @@ const QRGenerator: React.FC = () => {
           backgroundColor: '#f8f9fa', 
           borderRadius: '8px' 
         }}>
-          <h4>Instrucciones:</h4>
-          <ol>
-            <li>Make sure the Go backend is running on port 8080</li>
-            <li>Enter an order ID and click "Generate QR Code"</li>
-            <li>The QR code will link to: <code>/check/{orderId}</code></li>
-            <li>Customers can scan this to view their check</li>
-          </ol>
+          <h4>📋 Nuevo Sistema de QR Permanente:</h4>
+          <ul>
+            <li><strong>QR Permanente:</strong> Cada QR se mantiene igual siempre</li>
+            <li><strong>Contenido Dinámico:</strong> Las órdenes cambian, pero el QR no</li>
+            <li><strong>Seguro:</strong> Solo el personal puede crear órdenes con QR-ID válido</li>
+            <li><strong>Eficiente:</strong> Una vez impreso, el QR funciona para siempre</li>
+          </ul>
+          <p style={{ marginTop: '10px', fontSize: '14px', color: '#6c757d' }}>
+            💡 <strong>Flujo:</strong> Crear QR → Imprimir → Personal usa QR-ID → Cliente escanea
+          </p>
         </div>
       </div>
     </div>
