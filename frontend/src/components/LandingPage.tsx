@@ -13,7 +13,7 @@ const LandingPage: React.FC = () => {
           <h2>🍽️</h2>
           <p>Para ver tu cuenta, escanea el QR de tu mesa.</p>
           <p style={{ color: '#6c757d', fontSize: '14px' }}>
-            O visita <strong>/admin/qr</strong> para generar un QR prueba
+            O visita <strong>/admin/pos</strong> para el sistema de personal o <strong>/admin/qr</strong> para generar QR
           </p>
         </div>
       </div>

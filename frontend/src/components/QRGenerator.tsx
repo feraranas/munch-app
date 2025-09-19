@@ -8,32 +8,6 @@ const QRGenerator: React.FC = () => {
   const [orderId, setOrderId] = useState<string>('ORDER-001');
   const [qrCodeUrl, setQrCodeUrl] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(false);
-  const [mockOrderCreated, setMockOrderCreated] = useState<boolean>(false);
-
-  const createMockOrder = async () => {
-    setLoading(true);
-    try {
-      const response = await fetch('http://localhost:8080/api/pos/mock-order', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        setOrderId(data.id);
-        setMockOrderCreated(true);
-        alert(`Mock order created with ID: ${data.id}`);
-      } else {
-        alert('Failed to create mock order');
-      }
-    } catch (error) {
-      console.error('Error creating mock order:', error);
-      alert('Error connecting to backend. Make sure the Go server is running on port 8080.');
-    }
-    setLoading(false);
-  };
   
   const generateQR = async () => {
     setLoading(true);
@@ -86,37 +60,13 @@ const QRGenerator: React.FC = () => {
           />
         </div>
 
-        <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-          <button 
-            className="btn" 
-            onClick={createMockOrder}
-            disabled={loading}
-            style={{ backgroundColor: '#28a745', borderColor: '#28a745' }}
-          >
-            {loading ? 'Creando...' : '🍽️ Crear Orden Mock'}
-          </button>
-          
-          <button 
-            className="btn" 
-            onClick={generateQR}
-            disabled={loading || !orderId}
-          >
-            {loading ? 'Generando...' : '📱 Genera QR'}
-          </button>
-        </div>
-
-        {mockOrderCreated && (
-          <div style={{ 
-            marginTop: '15px', 
-            padding: '10px', 
-            backgroundColor: '#d4edda', 
-            border: '1px solid #c3e6cb',
-            borderRadius: '4px',
-            color: '#155724'
-          }}>
-            ✅ Mock order created! Now generate a QR code to view it.
-          </div>
-        )}
+        <button 
+          className="btn" 
+          onClick={generateQR}
+          disabled={loading || !orderId}
+        >
+          {loading ? 'Generando...' : '📱 Genera QR'}
+        </button>
 
         {qrCodeUrl && (
           <div style={{ marginTop: '30px' }}>
@@ -140,15 +90,16 @@ const QRGenerator: React.FC = () => {
           borderRadius: '8px' 
         }}>
           
+          <h4>📋 Instrucciones para Generar QR:</h4>
           <ol>
-            <li>Make sure the Go backend is running on port 8080</li>
-            <li>Click "🍽️ Crear Orden Mock" to create a sample restaurant order</li>
-            <li>Click "📱 Genera QR" to generate a QR code for that order</li>
-            <li>Scan the QR code or visit: <code>{checkUrl}</code></li>
-            <li>You'll see the full receipt with items, prices, and total!</li>
+            <li>Primero, crea una orden usando el <a href="/admin/pos" style={{ color: '#007bff' }}>Sistema POS</a></li>
+            <li>Copia el ID de la orden creada</li>
+            <li>Pega el ID en el campo de arriba</li>
+            <li>Haz clic en "📱 Genera QR" para generar el código</li>
+            <li>Los clientes pueden escanear el QR para ver su recibo</li>
           </ol>
           <p style={{ marginTop: '10px', fontSize: '14px', color: '#6c757d' }}>
-            💡 This demonstrates the POS integration and receipt display from Iteration 2
+            💡 <strong>Flujo recomendado:</strong> Sistema POS → Crear Orden → Generar QR → Cliente escanea
           </p>
           
         </div>
