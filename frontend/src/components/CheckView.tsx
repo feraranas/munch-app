@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import * as Sentry from '@sentry/react';
 
@@ -34,31 +34,72 @@ const CheckView: React.FC = () => {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   const [qrSession, setQRSession] = useState<QRSessionResponse | null>(null);
+  const [polling, setPolling] = useState<boolean>(false);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
 
-  useEffect(() => {
-    const fetchQRSession = async () => {
-      try {
+  const fetchQRSession = useCallback(async (isPolling = false) => {
+    try {
+      if (!isPolling) {
         setLoading(true);
-        const response = await fetch(`http://localhost:8080/api/qr/${orderId}`);
-        
-        if (!response.ok) {
-          throw new Error(`QR session not found: ${response.statusText}`);
-        }
-        
-        const sessionData = await response.json();
-        setQRSession(sessionData);
-      } catch (err) {
-        console.error('Error fetching QR session:', err);
-        setError(err instanceof Error ? err.message : 'Failed to load QR session');
-      } finally {
-        setLoading(false);
+      } else {
+        setPolling(true);
       }
-    };
-
-    if (orderId) {
-      fetchQRSession();
+      
+      const response = await fetch(`http://localhost:8080/api/qr/${orderId}`);
+      
+      if (!response.ok) {
+        throw new Error(`QR session not found: ${response.statusText}`);
+      }
+      
+      const sessionData = await response.json();
+      setQRSession(sessionData);
+      setLastUpdated(new Date());
+      setError(null); // Clear any previous errors
+    } catch (err) {
+      console.error('Error fetching QR session:', err);
+      if (!isPolling) {
+        setError(err instanceof Error ? err.message : 'Failed to load QR session');
+      }
+      // For polling errors, we don't show error to user, just log it
+    } finally {
+      if (!isPolling) {
+        setLoading(false);
+      } else {
+        setPolling(false);
+      }
     }
   }, [orderId]);
+
+  useEffect(() => {
+    if (!orderId) return;
+
+    // Initial fetch
+    fetchQRSession(false);
+
+    // Set up polling every 3 seconds
+    const interval = setInterval(() => {
+      fetchQRSession(true);
+    }, 3000);
+
+    setPollingInterval(interval);
+
+    // Cleanup function
+    return () => {
+      if (interval) {
+        clearInterval(interval);
+      }
+    };
+  }, [orderId, fetchQRSession]);
+
+  // Cleanup polling on unmount
+  useEffect(() => {
+    return () => {
+      if (pollingInterval) {
+        clearInterval(pollingInterval);
+      }
+    };
+  }, [pollingInterval]);
 
   if (loading) {
     return (
@@ -89,6 +130,15 @@ const CheckView: React.FC = () => {
     }).format(price);
   };
 
+  const formatLastUpdated = () => {
+    if (!lastUpdated) return '';
+    return lastUpdated.toLocaleTimeString('es-MX', { 
+      hour: '2-digit', 
+      minute: '2-digit', 
+      second: '2-digit' 
+    });
+  };
+
   return (
     <div className="container">
       <div className="card">
@@ -97,6 +147,35 @@ const CheckView: React.FC = () => {
         {qrSession?.table_number && (
           <p><strong>Mesa:</strong> {qrSession.table_number}</p>
         )}
+        
+        {/* Real-time status indicator */}
+        <div style={{ 
+          display: 'flex', 
+          justifyContent: 'space-between', 
+          alignItems: 'center',
+          padding: '8px 12px',
+          backgroundColor: polling ? '#fff3cd' : '#d4edda',
+          border: `1px solid ${polling ? '#ffeeba' : '#c3e6cb'}`,
+          borderRadius: '6px',
+          fontSize: '12px',
+          marginBottom: '15px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <div style={{
+              width: '8px',
+              height: '8px',
+              borderRadius: '50%',
+              backgroundColor: polling ? '#ffc107' : '#28a745',
+              animation: polling ? 'pulse 1s infinite' : 'none'
+            }}></div>
+            <span>{polling ? '🔄 Actualizando...' : '✅ En tiempo real'}</span>
+          </div>
+          {lastUpdated && (
+            <span style={{ color: '#6c757d' }}>
+              Última actualización: {formatLastUpdated()}
+            </span>
+          )}
+        </div>
         
         {qrSession && !qrSession.has_order && (
           <div style={{ 
@@ -110,8 +189,25 @@ const CheckView: React.FC = () => {
             <h3>⏳ Esperando Orden</h3>
             <p>{qrSession.message}</p>
             <p style={{ fontSize: '14px', color: '#6c757d' }}>
-              El personal del restaurante creará tu orden. Por favor espera...
+              El personal del restaurante creará tu orden. La página se actualizará automáticamente cada 3 segundos.
             </p>
+            <button
+              onClick={() => fetchQRSession(false)}
+              disabled={polling}
+              style={{
+                marginTop: '10px',
+                padding: '8px 16px',
+                backgroundColor: '#007bff',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: polling ? 'not-allowed' : 'pointer',
+                fontSize: '14px',
+                opacity: polling ? 0.6 : 1
+              }}
+            >
+              {polling ? 'Actualizando...' : '🔄 Actualizar ahora'}
+            </button>
           </div>
         )}
         
@@ -173,8 +269,29 @@ const CheckView: React.FC = () => {
               backgroundColor: '#f8f9fa', 
               borderRadius: '8px',
             }}>
-              <p style={{ margin: '0', color: '#6c757d', fontSize: '14px' }}>
-                💡 En las próximas iteraciones podrás seleccionar tus items y pagar tu parte
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                <p style={{ margin: '0', color: '#6c757d', fontSize: '14px' }}>
+                  💡 En las próximas iteraciones podrás seleccionar tus items y pagar tu parte
+                </p>
+                <button
+                  onClick={() => fetchQRSession(false)}
+                  disabled={polling}
+                  style={{
+                    padding: '6px 12px',
+                    backgroundColor: '#007bff',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: polling ? 'not-allowed' : 'pointer',
+                    fontSize: '12px',
+                    opacity: polling ? 0.6 : 1
+                  }}
+                >
+                  {polling ? '⏳' : '🔄'}
+                </button>
+              </div>
+              <p style={{ margin: '0', color: '#6c757d', fontSize: '12px' }}>
+                🔄 Esta orden se actualiza automáticamente cada 3 segundos si el personal hace cambios
               </p>
             </div>
           </div>

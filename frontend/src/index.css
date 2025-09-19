@@ -84,3 +84,19 @@ code {
   background-color: #6c757d;
   cursor: not-allowed;
 }
+
+/* Pulse animation for polling indicator */
+@keyframes pulse {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.1);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
