@@ -11,9 +11,16 @@ interface MenuResponse {
   items: MenuItem[];
 }
 
+interface SelectedItem {
+  id: string;
+  name: string;
+  price: number;
+  qty: number;
+}
+
 const WaitstaffMenu: React.FC = () => {
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
-  const [selectedItems, setSelectedItems] = useState<string[]>([]);
+  const [selectedItems, setSelectedItems] = useState<SelectedItem[]>([]);
   const [qrId, setQrId] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(true);
   const [creating, setCreating] = useState<boolean>(false);
@@ -40,13 +47,43 @@ const WaitstaffMenu: React.FC = () => {
     }
   };
 
-  const toggleItemSelection = (itemId: string) => {
+  const addItem = (menuItem: MenuItem) => {
     setSelectedItems(prev => {
-      if (prev.includes(itemId)) {
-        return prev.filter(id => id !== itemId);
+      const existingIndex = prev.findIndex(item => item.id === menuItem.id);
+      if (existingIndex >= 0) {
+        // Increment quantity if item already exists
+        const updated = [...prev];
+        updated[existingIndex].qty += 1;
+        return updated;
       } else {
-        return [...prev, itemId];
+        // Add new item with quantity 1
+        return [...prev, {
+          id: menuItem.id,
+          name: menuItem.name,
+          price: menuItem.price,
+          qty: 1
+        }];
       }
+    });
+  };
+
+  const removeItem = (itemId: string) => {
+    setSelectedItems(prev => prev.filter(item => item.id !== itemId));
+  };
+
+  const updateQuantity = (itemId: string, newQty: number) => {
+    if (newQty <= 0) {
+      removeItem(itemId);
+      return;
+    }
+    
+    setSelectedItems(prev => {
+      const updated = [...prev];
+      const index = updated.findIndex(item => item.id === itemId);
+      if (index >= 0) {
+        updated[index].qty = newQty;
+      }
+      return updated;
     });
   };
 
@@ -68,7 +105,13 @@ const WaitstaffMenu: React.FC = () => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ qrId: qrId.trim(), selectedItems }),
+        body: JSON.stringify({ 
+          qrId: qrId.trim(), 
+          selectedItems: selectedItems.map(item => ({
+            id: item.id,
+            qty: item.qty
+          }))
+        }),
       });
       
       if (response.ok) {
@@ -96,9 +139,8 @@ const WaitstaffMenu: React.FC = () => {
   };
 
   const calculateTotal = () => {
-    return selectedItems.reduce((total, itemId) => {
-      const item = menuItems.find(item => item.id === itemId);
-      return total + (item ? item.price : 0);
+    return selectedItems.reduce((total, item) => {
+      return total + (item.price * item.qty);
     }, 0);
   };
 
@@ -171,33 +213,38 @@ const WaitstaffMenu: React.FC = () => {
             {menuItems.map((item) => (
               <div
                 key={item.id}
-                onClick={() => toggleItemSelection(item.id)}
                 style={{
-                  border: '2px solid',
-                  borderColor: selectedItems.includes(item.id) ? '#007bff' : '#e9ecef',
+                  border: '2px solid #e9ecef',
                   borderRadius: '8px',
                   padding: '15px',
-                  cursor: 'pointer',
-                  backgroundColor: selectedItems.includes(item.id) ? '#f8f9ff' : 'white',
-                  transition: 'all 0.2s ease',
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center'
+                  backgroundColor: 'white',
+                  transition: 'all 0.2s ease'
                 }}
               >
-                <div>
-                  <div style={{ fontWeight: '500', marginBottom: '4px' }}>
-                    {item.name}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                  <div>
+                    <div style={{ fontWeight: '500', marginBottom: '4px' }}>
+                      {item.name}
+                    </div>
+                    <div style={{ fontSize: '14px', color: '#6c757d' }}>
+                      {formatPrice(item.price)}
+                    </div>
                   </div>
-                  <div style={{ fontSize: '14px', color: '#6c757d' }}>
-                    {formatPrice(item.price)}
-                  </div>
-                </div>
-                <div style={{ 
-                  fontSize: '20px',
-                  color: selectedItems.includes(item.id) ? '#007bff' : '#e9ecef'
-                }}>
-                  {selectedItems.includes(item.id) ? '✓' : '○'}
+                  <button
+                    onClick={() => addItem(item)}
+                    style={{
+                      padding: '8px 16px',
+                      backgroundColor: '#007bff',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '6px',
+                      cursor: 'pointer',
+                      fontSize: '14px',
+                      fontWeight: '500'
+                    }}
+                  >
+                    + Agregar
+                  </button>
                 </div>
               </div>
             ))}
@@ -212,20 +259,99 @@ const WaitstaffMenu: React.FC = () => {
           }}>
             <h3>🛒 Resumen del Pedido</h3>
             <div style={{ marginBottom: '15px' }}>
-              {selectedItems.map(itemId => {
-                const item = menuItems.find(item => item.id === itemId);
-                return item ? (
-                  <div key={itemId} style={{ 
-                    display: 'flex', 
-                    justifyContent: 'space-between', 
-                    padding: '8px 0',
-                    borderBottom: '1px solid #f8f9fa'
-                  }}>
-                    <span>{item.name}</span>
-                    <span>{formatPrice(item.price)}</span>
+              {selectedItems.map(item => (
+                <div key={item.id} style={{ 
+                  display: 'flex', 
+                  justifyContent: 'space-between', 
+                  alignItems: 'center',
+                  padding: '12px 0',
+                  borderBottom: '1px solid #f8f9fa'
+                }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: '500', marginBottom: '4px' }}>
+                      {item.name}
+                    </div>
+                    <div style={{ fontSize: '14px', color: '#6c757d' }}>
+                      {formatPrice(item.price)} c/u
+                    </div>
                   </div>
-                ) : null;
-              })}
+                  
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                      <button
+                        onClick={() => updateQuantity(item.id, item.qty - 1)}
+                        style={{
+                          width: '30px',
+                          height: '30px',
+                          border: '1px solid #ddd',
+                          backgroundColor: 'white',
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '16px'
+                        }}
+                      >
+                        −
+                      </button>
+                      
+                      <input
+                        type="number"
+                        value={item.qty}
+                        onChange={(e) => updateQuantity(item.id, parseInt(e.target.value) || 0)}
+                        style={{
+                          width: '50px',
+                          textAlign: 'center',
+                          border: '1px solid #ddd',
+                          borderRadius: '4px',
+                          padding: '4px',
+                          fontSize: '14px'
+                        }}
+                        min="1"
+                      />
+                      
+                      <button
+                        onClick={() => updateQuantity(item.id, item.qty + 1)}
+                        style={{
+                          width: '30px',
+                          height: '30px',
+                          border: '1px solid #ddd',
+                          backgroundColor: 'white',
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '16px'
+                        }}
+                      >
+                        +
+                      </button>
+                    </div>
+                    
+                    <div style={{ minWidth: '80px', textAlign: 'right', fontWeight: '600' }}>
+                      {formatPrice(item.price * item.qty)}
+                    </div>
+                    
+                    <button
+                      onClick={() => removeItem(item.id)}
+                      style={{
+                        padding: '6px 8px',
+                        backgroundColor: '#dc3545',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        fontSize: '12px'
+                      }}
+                      title="Eliminar item"
+                    >
+                      🗑️
+                    </button>
+                  </div>
+                </div>
+              ))}
             </div>
             <div style={{ 
               display: 'flex', 
@@ -233,7 +359,9 @@ const WaitstaffMenu: React.FC = () => {
               alignItems: 'center',
               fontSize: '18px',
               fontWeight: 'bold',
-              marginBottom: '20px'
+              marginBottom: '20px',
+              paddingTop: '15px',
+              borderTop: '2px solid #e9ecef'
             }}>
               <span>Total:</span>
               <span>{formatPrice(calculateTotal())}</span>
@@ -278,12 +406,16 @@ const WaitstaffMenu: React.FC = () => {
         }}>
           <h4>📋 Instrucciones para el Personal:</h4>
           <ol>
-            <li>Selecciona los items que el cliente ha pedido</li>
-            <li>Revisa el resumen del pedido y el total</li>
-            <li>Haz clic en "Crear Orden" para generar la orden</li>
-            <li>El sistema generará un ID único para la orden</li>
-            <li>Puedes compartir el enlace del recibo con el cliente</li>
+            <li>Ingresa el <strong>QR-ID</strong> de la mesa del cliente</li>
+            <li>Usa <strong>"+ Agregar"</strong> para añadir items al pedido</li>
+            <li>Ajusta <strong>cantidades</strong> con los botones +/- o ingresa el número directamente</li>
+            <li><strong>Elimina items</strong> con el botón 🗑️ si el cliente cambia de opinión</li>
+            <li>Revisa el total y haz clic en <strong>"Crear Orden"</strong></li>
+            <li>El cliente verá la orden <strong>inmediatamente</strong> en su teléfono</li>
           </ol>
+          <p style={{ marginTop: '10px', fontSize: '14px', color: '#6c757d' }}>
+            💡 <strong>Tip:</strong> Puedes modificar la orden hasta hacer clic en "Crear Orden"
+          </p>
         </div>
       </div>
     </div>
