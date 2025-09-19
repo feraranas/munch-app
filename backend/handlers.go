@@ -28,8 +28,13 @@ type CreateOrderRequest struct {
 }
 
 type MenuSelectionRequest struct {
-	QRID          string   `json:"qrId" binding:"required"` // QR Session ID
-	SelectedItems []string `json:"selectedItems"`           // Array of menu item IDs
+	QRID          string         `json:"qrId" binding:"required"` // QR Session ID
+	SelectedItems []SelectedItem `json:"selectedItems"`           // Array of selected items with quantities
+}
+
+type SelectedItem struct {
+	ID  string `json:"id"`  // Menu item ID
+	Qty int    `json:"qty"` // Quantity
 }
 
 type OrderItem struct {
@@ -249,18 +254,21 @@ func (app *App) mockPOSOrder(c *gin.Context) {
 	var orderItems []OrderItem
 	var total float64
 
-	for _, selectedID := range req.SelectedItems {
+	for _, selectedItem := range req.SelectedItems {
 		// Find the menu item
 		for _, menuItem := range availableMenuItems {
-			if menuItem.ID == selectedID {
+			if menuItem.ID == selectedItem.ID {
+				if selectedItem.Qty <= 0 {
+					continue // Skip items with invalid quantity
+				}
 				orderItem := OrderItem{
 					ID:    menuItem.ID,
 					Name:  menuItem.Name,
 					Price: menuItem.Price,
-					Qty:   1, // Default quantity to 1
+					Qty:   selectedItem.Qty,
 				}
 				orderItems = append(orderItems, orderItem)
-				total += menuItem.Price
+				total += menuItem.Price * float64(selectedItem.Qty)
 				break
 			}
 		}
