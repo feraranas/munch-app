@@ -11,14 +11,15 @@ import (
 	"github.com/skip2/go-qrcode"
 )
 
-type QRRequest struct {
-	OrderID string `json:"orderId" binding:"required"`
+type QRCreateRequest struct {
+	TableNumber string `json:"tableNumber,omitempty"` // Optional table identifier
 }
 
 type QRResponse struct {
-	QRCodeURL string `json:"qrCodeUrl"`
-	OrderID   string `json:"orderId"`
-	CheckURL  string `json:"checkUrl"`
+	QRCodeURL   string `json:"qrCodeUrl"`
+	QRID        string `json:"qrId"`
+	CheckURL    string `json:"checkUrl"`
+	TableNumber string `json:"tableNumber,omitempty"`
 }
 
 type CreateOrderRequest struct {
@@ -27,7 +28,8 @@ type CreateOrderRequest struct {
 }
 
 type MenuSelectionRequest struct {
-	SelectedItems []string `json:"selectedItems"` // Array of menu item IDs
+	QRID          string   `json:"qrId" binding:"required"` // QR Session ID
+	SelectedItems []string `json:"selectedItems"`           // Array of menu item IDs
 }
 
 type OrderItem struct {
@@ -59,15 +61,18 @@ var availableMenuItems = []MenuItem{
 	{ID: "churros", Name: "Churros (6)", Price: 5.99},
 }
 
-func (app *App) generateQR(c *gin.Context) {
-	var req QRRequest
+func (app *App) createQRSession(c *gin.Context) {
+	var req QRCreateRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 		return
 	}
 
-	// For now, we'll create a static QR code pointing to our check URL
-	checkURL := fmt.Sprintf("http://localhost:3000/check/%s", req.OrderID)
+	// Generate unique QR session ID
+	qrID := uuid.New().String()
+
+	// Create the check URL using QR-ID
+	checkURL := fmt.Sprintf("http://localhost:3000/check/%s", qrID)
 
 	// Generate QR code
 	qrCode, err := qrcode.Encode(checkURL, qrcode.Medium, 256)
@@ -79,35 +84,78 @@ func (app *App) generateQR(c *gin.Context) {
 	// Convert to base64 data URL
 	qrDataURL := fmt.Sprintf("data:image/png;base64,%s", base64.StdEncoding.EncodeToString(qrCode))
 
-	// Create a mock order for demonstration
-	mockItems := []OrderItem{
-		{ID: "1", Name: "Tacos al Pastor (3)", Price: 12.99, Qty: 1},
-		{ID: "2", Name: "Enchiladas Verdes", Price: 14.99, Qty: 1},
-		{ID: "3", Name: "Cerveza Corona", Price: 4.50, Qty: 2},
-		{ID: "4", Name: "Agua de Horchata", Price: 3.99, Qty: 1},
-		{ID: "5", Name: "Flan Napolitano", Price: 6.99, Qty: 1},
+	// Create QR session in database
+	qrSession := QRSession{
+		ID:          qrID,
+		QRImageData: qrDataURL,
+		TableNumber: &req.TableNumber,
 	}
 
-	itemsJSON, err := json.Marshal(mockItems)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to marshal items"})
+	if err := app.DB.Create(&qrSession).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create QR session"})
 		return
 	}
 
-	order := Order{
-		ID:     req.OrderID,
-		Items:  string(itemsJSON),
-		Total:  43.46,
-		Status: "open",
+	response := QRResponse{
+		QRCodeURL:   qrDataURL,
+		QRID:        qrID,
+		CheckURL:    checkURL,
+		TableNumber: req.TableNumber,
 	}
 
-	// Upsert the order
-	app.DB.Save(&order)
+	c.JSON(http.StatusCreated, response)
+}
 
-	response := QRResponse{
-		QRCodeURL: qrDataURL,
-		OrderID:   req.OrderID,
-		CheckURL:  checkURL,
+func (app *App) getOrderByQR(c *gin.Context) {
+	qrID := c.Param("qrId")
+
+	// First, get the QR session
+	var qrSession QRSession
+	result := app.DB.First(&qrSession, "id = ?", qrID)
+	if result.Error != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "QR session not found"})
+		return
+	}
+
+	// If no current order, return empty state
+	if qrSession.CurrentOrder == nil {
+		response := map[string]interface{}{
+			"qr_id":        qrSession.ID,
+			"table_number": qrSession.TableNumber,
+			"has_order":    false,
+			"message":      "No active order for this QR code",
+		}
+		c.JSON(http.StatusOK, response)
+		return
+	}
+
+	// Get the current order
+	var order Order
+	result = app.DB.First(&order, "id = ?", *qrSession.CurrentOrder)
+	if result.Error != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Current order not found"})
+		return
+	}
+
+	// Parse items from JSON string
+	var items []OrderItem
+	if err := json.Unmarshal([]byte(order.Items), &items); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to parse order items"})
+		return
+	}
+
+	// Return order with parsed items
+	response := map[string]interface{}{
+		"qr_id":        qrSession.ID,
+		"table_number": qrSession.TableNumber,
+		"has_order":    true,
+		"order": map[string]interface{}{
+			"id":         order.ID,
+			"items":      items,
+			"total":      order.Total,
+			"status":     order.Status,
+			"created_at": order.CreatedAt,
+		},
 	}
 
 	c.JSON(http.StatusOK, response)
@@ -181,11 +229,19 @@ func (app *App) getMenuItems(c *gin.Context) {
 	})
 }
 
-// POS Mock API endpoint - creates order from waitstaff menu selection
+// POS Mock API endpoint - creates order from waitstaff menu selection and links to QR session
 func (app *App) mockPOSOrder(c *gin.Context) {
 	var req MenuSelectionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// First, verify the QR session exists
+	var qrSession QRSession
+	result := app.DB.First(&qrSession, "id = ?", req.QRID)
+	if result.Error != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "QR session not found"})
 		return
 	}
 
@@ -210,14 +266,10 @@ func (app *App) mockPOSOrder(c *gin.Context) {
 		}
 	}
 
-	// If no items selected, create a default order for demo purposes
+	// If no items selected, return error
 	if len(orderItems) == 0 {
-		orderItems = []OrderItem{
-			{ID: "tacos_pastor", Name: "Tacos al Pastor (3)", Price: 12.99, Qty: 1},
-			{ID: "enchiladas_verdes", Name: "Enchiladas Verdes", Price: 14.99, Qty: 1},
-			{ID: "cerveza_corona", Name: "Cerveza Corona", Price: 4.50, Qty: 2},
-		}
-		total = 36.98
+		c.JSON(http.StatusBadRequest, gin.H{"error": "No menu items selected"})
+		return
 	}
 
 	// Generate unique order ID
@@ -231,14 +283,22 @@ func (app *App) mockPOSOrder(c *gin.Context) {
 	}
 
 	order := Order{
-		ID:     orderID,
-		Items:  string(itemsJSON),
-		Total:  total,
-		Status: "open",
+		ID:        orderID,
+		QRSession: req.QRID,
+		Items:     string(itemsJSON),
+		Total:     total,
+		Status:    "open",
 	}
 
 	if err := app.DB.Create(&order).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create order"})
+		return
+	}
+
+	// Update QR session to point to this order
+	qrSession.CurrentOrder = &orderID
+	if err := app.DB.Save(&qrSession).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update QR session"})
 		return
 	}
 
@@ -248,6 +308,7 @@ func (app *App) mockPOSOrder(c *gin.Context) {
 
 	response := map[string]interface{}{
 		"id":         order.ID,
+		"qr_id":      req.QRID,
 		"items":      items,
 		"total":      order.Total,
 		"status":     order.Status,
