@@ -14,6 +14,7 @@ interface MenuResponse {
 const WaitstaffMenu: React.FC = () => {
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
+  const [qrId, setQrId] = useState<string>('');
   const [loading, setLoading] = useState<boolean>(true);
   const [creating, setCreating] = useState<boolean>(false);
   const [orderCreated, setOrderCreated] = useState<boolean>(false);
@@ -50,6 +51,16 @@ const WaitstaffMenu: React.FC = () => {
   };
 
   const createOrder = async () => {
+    if (!qrId.trim()) {
+      alert('Por favor ingresa un QR-ID válido');
+      return;
+    }
+    
+    if (selectedItems.length === 0) {
+      alert('Por favor selecciona al menos un item del menú');
+      return;
+    }
+    
     setCreating(true);
     try {
       const response = await fetch('http://localhost:8080/api/pos/mock-order', {
@@ -57,7 +68,7 @@ const WaitstaffMenu: React.FC = () => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ selectedItems }),
+        body: JSON.stringify({ qrId: qrId.trim(), selectedItems }),
       });
       
       if (response.ok) {
@@ -66,7 +77,8 @@ const WaitstaffMenu: React.FC = () => {
         setOrderCreated(true);
         setSelectedItems([]); // Clear selection after creating order
       } else {
-        alert('Failed to create order');
+        const errorData = await response.json();
+        alert(`Failed to create order: ${errorData.error || 'Unknown error'}`);
       }
     } catch (error) {
       console.error('Error creating order:', error);
@@ -107,6 +119,29 @@ const WaitstaffMenu: React.FC = () => {
         <h2>🍽️ Sistema POS - Las Gaoneras</h2>
         <p>Selecciona los items para crear una nueva orden</p>
         
+        <div style={{ marginBottom: '20px' }}>
+          <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
+            QR-ID de la Mesa:
+          </label>
+          <input
+            type="text"
+            value={qrId}
+            onChange={(e) => setQrId(e.target.value)}
+            style={{
+              width: '100%',
+              padding: '12px',
+              border: '2px solid #e9ecef',
+              borderRadius: '8px',
+              fontSize: '16px',
+              fontFamily: 'monospace'
+            }}
+            placeholder="Ingresa el QR-ID de la mesa (ej: a1b2c3d4-...)"
+          />
+          <p style={{ fontSize: '12px', color: '#6c757d', marginTop: '4px' }}>
+            💡 Obtén el QR-ID desde el sistema de generación de QR
+          </p>
+        </div>
+
         {orderCreated && (
           <div style={{ 
             marginBottom: '20px', 
@@ -118,7 +153,8 @@ const WaitstaffMenu: React.FC = () => {
           }}>
             ✅ ¡Orden creada exitosamente!<br />
             <strong>ID de Orden:</strong> {createdOrderId}<br />
-            <a href={`/check/${createdOrderId}`} style={{ color: '#155724', textDecoration: 'underline' }}>
+            <strong>QR-ID:</strong> {qrId}<br />
+            <a href={`/check/${qrId}`} style={{ color: '#155724', textDecoration: 'underline' }}>
               Ver recibo del cliente
             </a>
           </div>
@@ -209,7 +245,7 @@ const WaitstaffMenu: React.FC = () => {
           <button 
             className="btn" 
             onClick={createOrder}
-            disabled={creating || selectedItems.length === 0}
+            disabled={creating || selectedItems.length === 0 || !qrId.trim()}
             style={{ 
               backgroundColor: '#28a745', 
               borderColor: '#28a745',
