@@ -4,6 +4,7 @@ import LandingPage from './components/LandingPage';
 import CheckView from './components/CheckView';
 import QRGenerator from './components/QRGenerator';
 import WaitstaffMenu from './components/WaitstaffMenu';
+import AdminDashboard from './components/AdminDashboard';
 import * as Sentry from "@sentry/react";
 
 // Root layout component
@@ -36,6 +37,10 @@ const router = createBrowserRouter([
       {
         path: "admin/pos",
         element: <WaitstaffMenu />,
+      },
+      {
+        path: "admin",
+        element: <AdminDashboard />,
       },
     ],
   },

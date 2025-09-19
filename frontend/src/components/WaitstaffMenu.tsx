@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import * as Sentry from '@sentry/react';
 
 interface MenuItem {
@@ -19,17 +20,52 @@ interface SelectedItem {
 }
 
 const WaitstaffMenu: React.FC = () => {
+  const [searchParams] = useSearchParams();
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [selectedItems, setSelectedItems] = useState<SelectedItem[]>([]);
-  const [qrId, setQrId] = useState<string>('');
+  const [qrId, setQrId] = useState<string>(searchParams.get('qrId') || '');
   const [loading, setLoading] = useState<boolean>(true);
   const [creating, setCreating] = useState<boolean>(false);
   const [orderCreated, setOrderCreated] = useState<boolean>(false);
   const [createdOrderId, setCreatedOrderId] = useState<string>('');
+  const [existingOrder, setExistingOrder] = useState<any>(null);
+  const [isModifying, setIsModifying] = useState<boolean>(false);
+
+  const loadExistingOrder = useCallback(async () => {
+    if (!qrId) return;
+    
+    try {
+      const response = await fetch(`http://localhost:8080/api/qr/${qrId}`);
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.has_order && data.order) {
+          setExistingOrder(data.order);
+          setIsModifying(true);
+          
+          // Convert existing order items to selected items format
+          const existingItems: SelectedItem[] = data.order.items.map((item: any) => ({
+            id: item.id,
+            name: item.name,
+            price: item.price,
+            qty: item.qty
+          }));
+          
+          setSelectedItems(existingItems);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading existing order:', error);
+    }
+  }, [qrId]);
 
   useEffect(() => {
     fetchMenuItems();
-  }, []);
+    // If we have a QR-ID from URL params, try to load existing order
+    if (qrId) {
+      loadExistingOrder();
+    }
+  }, [qrId, loadExistingOrder]);
 
   const fetchMenuItems = async () => {
     try {
@@ -100,8 +136,15 @@ const WaitstaffMenu: React.FC = () => {
     
     setCreating(true);
     try {
-      const response = await fetch('http://localhost:8080/api/pos/mock-order', {
-        method: 'POST',
+      // Choose endpoint based on whether we're modifying or creating
+      const endpoint = isModifying 
+        ? 'http://localhost:8080/api/orders/update'
+        : 'http://localhost:8080/api/pos/mock-order';
+      
+      const method = isModifying ? 'PUT' : 'POST';
+
+      const response = await fetch(endpoint, {
+        method: method,
         headers: {
           'Content-Type': 'application/json',
         },
@@ -118,13 +161,22 @@ const WaitstaffMenu: React.FC = () => {
         const data = await response.json();
         setCreatedOrderId(data.id);
         setOrderCreated(true);
-        setSelectedItems([]); // Clear selection after creating order
+        
+        // If we're modifying, update the existing order data
+        if (isModifying) {
+          setExistingOrder(data);
+        }
+        
+        // Don't clear selection when modifying, so user can see the updated state
+        if (!isModifying) {
+          setSelectedItems([]);
+        }
       } else {
         const errorData = await response.json();
-        alert(`Failed to create order: ${errorData.error || 'Unknown error'}`);
+        alert(`Failed to ${isModifying ? 'update' : 'create'} order: ${errorData.error || 'Unknown error'}`);
       }
     } catch (error) {
-      console.error('Error creating order:', error);
+      console.error(`Error ${isModifying ? 'updating' : 'creating'} order:`, error);
       alert('Error connecting to backend. Make sure the Go server is running on port 8080.');
     } finally {
       setCreating(false);
@@ -158,8 +210,40 @@ const WaitstaffMenu: React.FC = () => {
   return (
     <div className="container">
       <div className="card">
-        <h2>🍽️ Sistema POS - Las Gaoneras</h2>
-        <p>Selecciona los items para crear una nueva orden</p>
+        <h2>🍽️ Sistema POS - {isModifying ? 'Modificar Orden' : 'Las Gaoneras'}</h2>
+        {isModifying && existingOrder && (
+          <div style={{ 
+            backgroundColor: '#e3f2fd', 
+            border: '1px solid #bbdefb',
+            borderRadius: '6px',
+            padding: '12px',
+            marginBottom: '20px',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center'
+          }}>
+            <div>
+              <strong>📝 Modificando orden existente</strong>
+              <div style={{ fontSize: '14px', color: '#1976d2', marginTop: '5px' }}>
+                Orden ID: {existingOrder.id} • Total actual: {formatPrice(existingOrder.total)}
+              </div>
+            </div>
+            <a 
+              href="/admin"
+              style={{
+                padding: '6px 12px',
+                backgroundColor: '#6c757d',
+                color: 'white',
+                textDecoration: 'none',
+                borderRadius: '4px',
+                fontSize: '12px'
+              }}
+            >
+              ← Dashboard
+            </a>
+          </div>
+        )}
+        <p>{isModifying ? 'Modifica los items de la orden existente' : 'Selecciona los items para crear una nueva orden'}</p>
         
         <div style={{ marginBottom: '20px' }}>
           <label style={{ display: 'block', marginBottom: '8px', fontWeight: '500' }}>
@@ -381,7 +465,7 @@ const WaitstaffMenu: React.FC = () => {
               minWidth: '200px'
             }}
           >
-            {creating ? 'Creando Orden...' : `🍽️ Crear Orden (${selectedItems.length} items)`}
+            {creating ? '⏳ Guardando...' : `${isModifying ? '💾 Actualizar' : '🍽️ Crear'} Orden (${selectedItems.length} items)`}
           </button>
           
           <button 
