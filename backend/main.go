@@ -91,6 +91,8 @@ func (app *App) initRouter() {
 		api.POST("/orders", app.createOrder)
 		api.GET("/menu/items", app.getMenuItems)
 		api.POST("/pos/mock-order", app.mockPOSOrder)
+		api.PUT("/orders/update", app.updateOrder)
+		api.GET("/admin/sessions", app.getAllQRSessions)
 	}
 
 	// Health check

@@ -234,6 +234,146 @@ func (app *App) getMenuItems(c *gin.Context) {
 	})
 }
 
+// Get all QR sessions for admin dashboard
+func (app *App) getAllQRSessions(c *gin.Context) {
+	var sessions []QRSession
+	result := app.DB.Find(&sessions)
+	if result.Error != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch QR sessions"})
+		return
+	}
+
+	// Build response with order details for each session
+	var response []map[string]interface{}
+	for _, session := range sessions {
+		sessionData := map[string]interface{}{
+			"id":           session.ID,
+			"table_number": session.TableNumber,
+			"created_at":   session.CreatedAt,
+			"updated_at":   session.UpdatedAt,
+			"has_order":    session.CurrentOrder != nil,
+		}
+
+		// If there's a current order, fetch its details
+		if session.CurrentOrder != nil {
+			var order Order
+			orderResult := app.DB.First(&order, "id = ?", *session.CurrentOrder)
+			if orderResult.Error == nil {
+				// Parse items from JSON string
+				var items []OrderItem
+				if err := json.Unmarshal([]byte(order.Items), &items); err == nil {
+					sessionData["order"] = map[string]interface{}{
+						"id":         order.ID,
+						"items":      items,
+						"total":      order.Total,
+						"status":     order.Status,
+						"created_at": order.CreatedAt,
+					}
+				}
+			}
+		}
+
+		response = append(response, sessionData)
+	}
+
+	c.JSON(http.StatusOK, gin.H{"sessions": response})
+}
+
+// Update existing order for a QR session
+func (app *App) updateOrder(c *gin.Context) {
+	var req MenuSelectionRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		return
+	}
+
+	// Validate the QR session exists
+	var qrSession QRSession
+	result := app.DB.First(&qrSession, "id = ?", req.QRID)
+	if result.Error != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "QR session not found"})
+		return
+	}
+
+	// Check if there's an existing order
+	if qrSession.CurrentOrder == nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "No existing order to update"})
+		return
+	}
+
+	// Get the existing order
+	var existingOrder Order
+	result = app.DB.First(&existingOrder, "id = ?", *qrSession.CurrentOrder)
+	if result.Error != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "Existing order not found"})
+		return
+	}
+
+	// Process selected items into order items
+	var orderItems []OrderItem
+	var total float64
+
+	for _, selectedItem := range req.SelectedItems {
+		// Find the menu item
+		for _, menuItem := range availableMenuItems {
+			if menuItem.ID == selectedItem.ID {
+				if selectedItem.Qty <= 0 {
+					continue // Skip items with zero or negative quantity
+				}
+
+				orderItem := OrderItem{
+					ID:    menuItem.ID,
+					Name:  menuItem.Name,
+					Price: menuItem.Price,
+					Qty:   selectedItem.Qty,
+				}
+				orderItems = append(orderItems, orderItem)
+				total += menuItem.Price * float64(selectedItem.Qty)
+				break
+			}
+		}
+	}
+
+	if len(orderItems) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "No valid items selected"})
+		return
+	}
+
+	// Update the existing order
+	itemsJSON, err := json.Marshal(orderItems)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to marshal items"})
+		return
+	}
+
+	existingOrder.Items = string(itemsJSON)
+	existingOrder.Total = total
+
+	if err := app.DB.Save(&existingOrder).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update order"})
+		return
+	}
+
+	// Parse items back for response
+	var responseItems []OrderItem
+	if err := json.Unmarshal([]byte(existingOrder.Items), &responseItems); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to parse updated items"})
+		return
+	}
+
+	response := map[string]interface{}{
+		"id":         existingOrder.ID,
+		"qr_session": existingOrder.QRSession,
+		"items":      responseItems,
+		"total":      existingOrder.Total,
+		"status":     existingOrder.Status,
+		"created_at": existingOrder.CreatedAt,
+		"updated":    true,
+	}
+
+	c.JSON(http.StatusOK, response)
+}
+
 // POS Mock API endpoint - creates order from waitstaff menu selection and links to QR session
 func (app *App) mockPOSOrder(c *gin.Context) {
 	var req MenuSelectionRequest
