@@ -94,9 +94,21 @@ make deps    # Install dependencies
 make clean   # Clean build artifacts
 ```
 
+### Docker Commands (Backend)
+
+```bash
+docker-compose up backend
+```
+
 ### Frontend Scripts
 ```bash
 npm start    # Development server
 npm build    # Production build
 npm test     # Run tests
+```
+
+### Docker Commands (Frontend)
+
+```bash
+docker-compose up frontend
 ```
