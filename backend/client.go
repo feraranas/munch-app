@@ -1,7 +1,10 @@
 package main
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"time"
@@ -78,10 +81,47 @@ func (app *App) webSocketHandler(c *gin.Context) {
 		return
 	}
 
+	// Wait for initial message with QR session info
+	_, messageBytes, err := conn.ReadMessage()
+	if err != nil {
+		log.Printf("Error reading initial message: %v", err)
+		// TODO: Hay que manejar este error en Frontend. El usuario debe ser
+		// invitado a re-intentar escanear el código QR.
+		conn.Close()
+		return
+	}
+
+	var initMsg Message
+	if err := json.Unmarshal(messageBytes, &initMsg); err != nil {
+		log.Printf("Error parsing initial message: %v", err)
+		// TODO: Hay que manejar este error en Frontend. El usuario debe ser
+		// invitado a re-intentar escanear el código QR.
+		conn.Close()
+		return
+	}
+
+	if initMsg.Type != "join_session" || initMsg.QRSession == "" {
+		log.Printf("Invalid initial message type or missing QR session")
+		// TODO: Hay que manejar este error en Frontend. El usuario debe ser
+		// invitado a re-intentar escanear el código QR.
+		conn.Close()
+		return
+	}
+
+	// Generate user ID and avatar
+	userID := generateUserID()
+	avatar := generateAvatar(userID)
+
 	client := &Client{
 		hub:  app.Hub,
 		conn: conn,
 		send: make(chan []byte, 256),
+		user: User{
+			ID:        userID,
+			QRSession: initMsg.QRSession,
+			Avatar:    avatar,
+			JoinedAt:  time.Now().Unix(),
+		},
 	}
 
 	// Register the client with the hub
@@ -123,11 +163,13 @@ func (c *Client) readPump() {
 			continue
 		}
 
-		// If it's a ping message, respond with pong
-		if incomingMsg.Content == "ping" {
+		// Handle different message types
+		switch incomingMsg.Type {
+		case "ping":
+			// Respond with pong
 			pongMsg := Message{
-				Iteration: incomingMsg.Iteration,
-				Content:   "pong",
+				Type:    "pong",
+				Content: "pong",
 			}
 
 			pongBytes, err := json.Marshal(pongMsg)
@@ -143,9 +185,21 @@ func (c *Client) readPump() {
 				close(c.send)
 				return
 			}
-		} else {
-			// For non-ping messages, broadcast to all clients
-			c.hub.broadcast <- messageBytes
+		default:
+			// For other messages, broadcast to all clients in the same session
+			if sessionClients, exists := c.hub.sessions[c.user.QRSession]; exists {
+				for client := range sessionClients {
+					if client != c { // Don't send back to sender
+						select {
+						case client.send <- messageBytes:
+						default:
+							close(client.send)
+							delete(c.hub.clients, client)
+							delete(sessionClients, client)
+						}
+					}
+				}
+			}
 		}
 	}
 }
@@ -194,4 +248,22 @@ func (c *Client) writePump() {
 			}
 		}
 	}
+}
+
+// generateUserID creates a random user ID
+func generateUserID() string {
+	bytes := make([]byte, 4)
+	rand.Read(bytes)
+	return hex.EncodeToString(bytes)
+}
+
+// generateAvatar creates a simple avatar identifier
+func generateAvatar(userID string) string {
+	// Simple avatar based on user ID hash
+	hash := 0
+	for _, char := range userID {
+		hash = int(char) + ((hash << 5) - hash)
+	}
+	avatarNum := (hash % 10) + 1
+	return fmt.Sprintf("avatar_%d", avatarNum)
 }
