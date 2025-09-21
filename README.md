@@ -112,3 +112,8 @@ npm test     # Run tests
 ```bash
 docker-compose up frontend
 ```
+
+### Build and start all services at once
+```bash
+docker-compose up --build
+```
