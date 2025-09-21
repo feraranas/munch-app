@@ -202,11 +202,22 @@ There is no seamless way today to connect the restaurant’s POS system with a c
 - DevOps: Add message broker (Redis, Kafka, or socket.io scaling).
 - QA: Validate multiple browsers see updates instantly.
 
-*Iteration 4 – Item Claiming (Locking)*
+*Iteration 4 Part 1 – Item Claiming (Locking)*
 
-- Frontend: Item selection/lock UI.
+- Step 1. Frontend: Item selection.
+- Step 2. Frontend. Structure a message for the Websocket connection, when an item is clicked this message will be broadcasted to other participants in this QRSession. All of the connections will receive this message and update in real-time the selection that another user did.
+- Step 3. Frontend: Lock UI for other users different than the user that selected the item.
+
+*Iteration 4 Part 2 – Backend Locking mechanism*
+
 - Backend: Locking mechanism (optimistic or DB row lock).
+
+*Iteration 4 Part 3 – Monitor Concurrency Performance*
+
 - DevOps: Monitor concurrency performance (load test with 10–20 users).
+
+*Iteration 4 Part 4 – Test race conditions*
+
 - QA: Test race conditions (two users select same dish at same time).
 
 *Iteration 5 – Share Calculation*
