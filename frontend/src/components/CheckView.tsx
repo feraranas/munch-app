@@ -39,6 +39,7 @@ const CheckView: React.FC = () => {
   const [polling, setPolling] = useState<boolean>(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
+  const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   
   // Initialize WebSocket connection for this QR session
   const { isConnected, connectionError, connectedUsers } = useWebSocket({ qrSessionId: orderId || '' });
@@ -141,6 +142,18 @@ const CheckView: React.FC = () => {
       hour: '2-digit', 
       minute: '2-digit', 
       second: '2-digit' 
+    });
+  };
+
+  const handleItemSelection = (itemId: string) => {
+    setSelectedItems(prev => {
+      const newSelection = new Set(prev);
+      if (newSelection.has(itemId)) {
+        newSelection.delete(itemId);
+      } else {
+        newSelection.add(itemId);
+      }
+      return newSelection;
     });
   };
 
@@ -251,27 +264,48 @@ const CheckView: React.FC = () => {
             </div>
             
             <div style={{ marginBottom: '20px' }}>
-              {qrSession.order.items.map((item) => (
-                <div key={item.id} style={{ 
-                  display: 'flex', 
-                  justifyContent: 'space-between', 
-                  alignItems: 'center',
-                  padding: '12px 0',
-                  borderBottom: '1px solid #f8f9fa'
-                }}>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: '500', marginBottom: '4px' }}>
-                      {item.name}
+              {qrSession.order.items.map((item) => {
+                const isSelected = selectedItems.has(item.id);
+                return (
+                  <div 
+                    key={item.id} 
+                    onClick={() => handleItemSelection(item.id)}
+                    style={{ 
+                      display: 'flex', 
+                      justifyContent: 'space-between', 
+                      alignItems: 'center',
+                      padding: '16px',
+                      margin: '8px 0',
+                      border: `2px solid ${isSelected ? '#007bff' : '#e9ecef'}`,
+                      borderRadius: '8px',
+                      backgroundColor: isSelected ? '#f0f8ff' : '#ffffff',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      boxShadow: isSelected ? '0 2px 8px rgba(0, 123, 255, 0.2)' : '0 1px 3px rgba(0, 0, 0, 0.1)'
+                    }}
+                  >
+                    <div style={{ flex: 1 }}>
+                      <div style={{ 
+                        fontWeight: '500', 
+                        marginBottom: '4px',
+                        color: isSelected ? '#0056b3' : '#212529'
+                      }}>
+                        {isSelected && '✓ '}{item.name}
+                      </div>
+                      <div style={{ fontSize: '14px', color: '#6c757d' }}>
+                        Cantidad: {item.qty}
+                      </div>
                     </div>
-                    <div style={{ fontSize: '14px', color: '#6c757d' }}>
-                      Cantidad: {item.qty}
+                    <div style={{ 
+                      fontWeight: '600', 
+                      fontSize: '16px',
+                      color: isSelected ? '#0056b3' : '#212529'
+                    }}>
+                      {formatPrice(item.price * item.qty)}
                     </div>
                   </div>
-                  <div style={{ fontWeight: '600', fontSize: '16px' }}>
-                    {formatPrice(item.price * item.qty)}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
             
             <div style={{ 
@@ -300,7 +334,7 @@ const CheckView: React.FC = () => {
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                 <p style={{ margin: '0', color: '#6c757d', fontSize: '14px' }}>
-                  💡 En las próximas iteraciones podrás seleccionar tus items y pagar tu parte
+                  💡 Toca en los items para seleccionar lo que ordenaste. En las próximas iteraciones podrás pagar tu parte
                 </p>
                 <button
                   onClick={() => fetchQRSession(false)}
