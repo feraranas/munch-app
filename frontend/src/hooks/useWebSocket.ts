@@ -1,10 +1,29 @@
 import { useEffect, useRef, useState } from "react";
 
-export const useWebSocket = () => {
+interface UseWebSocketProps {
+  qrSessionId: string;
+}
+
+interface User {
+  id: string;
+  qr_session: string;
+  avatar: string;
+  joined_at: number;
+}
+
+interface WebSocketMessage {
+  type: string;
+  qr_session?: string;
+  user_id?: string;
+  content?: string;
+  users?: User[];
+}
+
+export const useWebSocket = ({ qrSessionId }: UseWebSocketProps) => {
   const wsRef = useRef<WebSocket | null>(null);
-  const [counter, setCounter] = useState<number>(0);
-  const counterRef = useRef<number>(0);
-  const pingIntervalRef = useRef<number | null>(null);
+  const [isConnected, setIsConnected] = useState<boolean>(false);
+  const [connectionError, setConnectionError] = useState<string | null>(null);
+  const [connectedUsers, setConnectedUsers] = useState<User[]>([]);
 
   useEffect(() => {
     // Prevent double connections in React Strict Mode
@@ -17,53 +36,62 @@ export const useWebSocket = () => {
     wsRef.current = ws;
 
     ws.addEventListener("open", () => {
-      console.log("Connected wuuuu");
-
-      pingIntervalRef.current = window.setInterval(() => {
-        const message = {
-          iteration: counterRef.current,
-          content: "ping",
-        };
-        console.log(`SENT: ping: ${counterRef.current}`);
-        ws.send(JSON.stringify(message));
-      }, 1000);
+      console.log(`WebSocket connected for QR session: ${qrSessionId}`);
+      setIsConnected(true);
+      setConnectionError(null);
+      
+      // Send join session message
+      const joinMessage: WebSocketMessage = {
+        type: "join_session",
+        qr_session: qrSessionId
+      };
+      ws.send(JSON.stringify(joinMessage));
     });
 
     ws.addEventListener("message", (e) => {
-      const message = JSON.parse(e.data);
-      console.log(`RECEIVED: ${message.iteration}: ${message.content}`);
-      counterRef.current = counterRef.current + 1;
-      setCounter(counterRef.current);
-    });
-
-    ws.addEventListener("close", () => {
-      console.log("DISCONNECTED");
-      if (pingIntervalRef.current) {
-        clearInterval(pingIntervalRef.current);
-        pingIntervalRef.current = null;
+      const message: WebSocketMessage = JSON.parse(e.data);
+      console.log(`RECEIVED message for session ${qrSessionId}:`, message);
+      
+      // Handle different message types
+      switch (message.type) {
+        case "user_list_update":
+          if (message.users) {
+            setConnectedUsers(message.users);
+            console.log(`Updated user list for session ${qrSessionId}:`, message.users);
+          }
+          break;
+        case "pong":
+          console.log("Received pong");
+          break;
+        default:
+          console.log("Unknown message type:", message.type);
       }
     });
 
+    ws.addEventListener("close", () => {
+      console.log(`WebSocket disconnected for QR session: ${qrSessionId}`);
+      setIsConnected(false);
+      //setConnectedUsers([]);
+    });
+
     ws.addEventListener("error", () => {
-      console.error("WebSocket ERROR");
+      console.error(`WebSocket ERROR for QR session: ${qrSessionId}`);
+      setConnectionError("Failed to connect to server");
+      setIsConnected(false);
     });
 
     // Cleanup on pagehide (bfcache-safe)
     const handlePageHide = () => {
-      console.log("CLOSING on pagehide");
+      console.log(`CLOSING WebSocket on pagehide for session: ${qrSessionId}`);
       if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
         ws.close();
-      }
-      if (pingIntervalRef.current) {
-        clearInterval(pingIntervalRef.current);
-        pingIntervalRef.current = null;
       }
     };
     window.addEventListener("pagehide", handlePageHide);
 
     // Cleanup when component unmounts
     return () => {
-      console.log("Cleanup on unmount");
+      console.log(`Cleanup WebSocket on unmount for session: ${qrSessionId}`);
       window.removeEventListener("pagehide", handlePageHide);
       
       // Only close if the WebSocket is in a valid state to be closed
@@ -71,15 +99,10 @@ export const useWebSocket = () => {
         ws.close();
       }
       
-      if (pingIntervalRef.current) {
-        clearInterval(pingIntervalRef.current);
-        pingIntervalRef.current = null;
-      }
-      
       // Clear the WebSocket ref
       wsRef.current = null;
     };
-  }, []); // Run only once on mount
+  }, [qrSessionId]); // Re-run when qrSessionId changes
 
-  return { counter };
+  return { isConnected, connectionError, connectedUsers };
 };
