@@ -16,6 +16,7 @@ import (
 type App struct {
 	DB     *gorm.DB
 	Router *gin.Engine
+	Hub    *Hub
 }
 
 type QRSession struct {
@@ -50,6 +51,10 @@ func main() {
 	if err := app.initDB(); err != nil {
 		log.Fatal("Failed to initialize database:", err)
 	}
+
+	// Initialize WebSocket hub
+	app.Hub = NewHub()
+	go app.Hub.Run()
 
 	// Initialize router
 	app.initRouter()
@@ -93,6 +98,13 @@ func (app *App) initRouter() {
 		api.POST("/pos/mock-order", app.mockPOSOrder)
 		api.PUT("/orders/update", app.updateOrder)
 		api.GET("/admin/sessions", app.getAllQRSessions)
+	}
+
+	// Websocket routes
+	ws := app.Router.Group("/ws")
+	{
+		ws.GET("/session", app.webSocketHandler)
+		// ws.GET("/session/:qrId", app.webSocketHandler)
 	}
 
 	// Health check
