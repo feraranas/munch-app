@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import * as Sentry from '@sentry/react';
+import { useWebSocket } from '../hooks/useWebSocket';
+import MockProfile from './MockProfile';
 
 interface RouteParams {
   orderId: string; // This is actually the QR-ID now
@@ -37,6 +39,9 @@ const CheckView: React.FC = () => {
   const [polling, setPolling] = useState<boolean>(false);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
+  
+  // Initialize WebSocket connection for this QR session
+  const { isConnected, connectionError } = useWebSocket({ qrSessionId: orderId || '' });
 
   const fetchQRSession = useCallback(async (isPolling = false) => {
     try {
@@ -148,6 +153,29 @@ const CheckView: React.FC = () => {
           <p><strong>Mesa:</strong> {qrSession.table_number}</p>
         )}
         
+        {/* Mock Profile Component - shows when WebSocket connects */}
+        {orderId && (
+          <MockProfile 
+            qrSessionId={orderId} 
+            isConnected={isConnected} 
+          />
+        )}
+        
+        {/* WebSocket connection error */}
+        {connectionError && (
+          <div style={{
+            padding: '12px',
+            backgroundColor: '#f8d7da',
+            border: '1px solid #f5c6cb',
+            borderRadius: '6px',
+            color: '#721c24',
+            fontSize: '14px',
+            marginBottom: '15px'
+          }}>
+            ⚠️ Error de conexión: {connectionError}
+          </div>
+        )}
+        
         {/* Real-time status indicator */}
         <div style={{ 
           display: 'flex', 
@@ -184,7 +212,7 @@ const CheckView: React.FC = () => {
             backgroundColor: '#fff3cd', 
             border: '1px solid #ffeeba',
             borderRadius: '8px',
-            textAlign: 'center'
+            textAlign: 'center' as const
           }}>
             <h3>⏳ Esperando Orden</h3>
             <p>{qrSession.message}</p>

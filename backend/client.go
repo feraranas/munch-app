@@ -41,8 +41,19 @@ var upgrader = websocket.Upgrader{
 
 // Message represents the structure of WebSocket messages
 type Message struct {
-	Iteration int    `json:"iteration"`
-	Content   string `json:"content"`
+	Type      string `json:"type"`
+	QRSession string `json:"qr_session,omitempty"`
+	UserID    string `json:"user_id,omitempty"`
+	Content   string `json:"content,omitempty"`
+	Users     []User `json:"users,omitempty"`
+}
+
+// User represents a connected user
+type User struct {
+	ID        string `json:"id"`
+	QRSession string `json:"qr_session"`
+	Avatar    string `json:"avatar"`
+	JoinedAt  int64  `json:"joined_at"`
 }
 
 type Client struct {
@@ -53,6 +64,9 @@ type Client struct {
 
 	// Buffered channel of outbound messages.
 	send chan []byte
+
+	// User information
+	user User
 }
 
 // webSocketHandler handles websocket requests from the peer.

@@ -1,13 +1,8 @@
 import React from 'react';
 import * as Sentry from '@sentry/react';
 import SentryHelloWorldButtons from './SentryHelloWorld';
-import { useWebSocket } from '../hooks/useWebSocket';
 
 const LandingPage: React.FC = () => {
-  
-  // const { counter } = useWebSocket("session-123", "default");
-  const { counter } = useWebSocket();
-  
   return (
     <div className="container">
       <div className="card">
@@ -23,8 +18,6 @@ const LandingPage: React.FC = () => {
         </div>
       </div>
       <SentryHelloWorldButtons />
-      <h1>WebSocket Demo</h1>
-      <p>Messages received: {counter}</p>
     </div>
   );
 };
