@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import * as Sentry from '@sentry/react';
 import { useWebSocket } from '../hooks/useWebSocket';
-import MockProfile from './MockProfile';
+import CollaborativeUsers from './MockProfile';
 
 interface RouteParams {
   orderId: string; // This is actually the QR-ID now
@@ -41,7 +41,7 @@ const CheckView: React.FC = () => {
   const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
   
   // Initialize WebSocket connection for this QR session
-  const { isConnected, connectionError } = useWebSocket({ qrSessionId: orderId || '' });
+  const { isConnected, connectionError, connectedUsers } = useWebSocket({ qrSessionId: orderId || '' });
 
   const fetchQRSession = useCallback(async (isPolling = false) => {
     try {
@@ -153,11 +153,12 @@ const CheckView: React.FC = () => {
           <p><strong>Mesa:</strong> {qrSession.table_number}</p>
         )}
         
-        {/* Mock Profile Component - shows when WebSocket connects */}
+        {/* Collaborative Users Component - shows all connected users */}
         {orderId && (
-          <MockProfile 
+          <CollaborativeUsers 
             qrSessionId={orderId} 
-            isConnected={isConnected} 
+            isConnected={isConnected}
+            connectedUsers={connectedUsers}
           />
         )}
         
