@@ -17,6 +17,15 @@ interface WebSocketMessage {
   user_id?: string;
   content?: string;
   users?: User[];
+  // Item selection fields
+  item_id?: string;
+  selected?: boolean;
+}
+
+interface ItemSelection {
+  item_id: string;
+  user_id: string;
+  selected: boolean;
 }
 
 export const useWebSocket = ({ qrSessionId }: UseWebSocketProps) => {
@@ -24,6 +33,7 @@ export const useWebSocket = ({ qrSessionId }: UseWebSocketProps) => {
   const [isConnected, setIsConnected] = useState<boolean>(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [connectedUsers, setConnectedUsers] = useState<User[]>([]);
+  const [itemSelections, setItemSelections] = useState<Map<string, string>>(new Map());
 
   useEffect(() => {
     // Prevent double connections in React Strict Mode
@@ -41,6 +51,9 @@ export const useWebSocket = ({ qrSessionId }: UseWebSocketProps) => {
       setConnectionError(null);
       
       // Send join session message
+      // TODO: Add a check before sending the join_session.
+      //   if (wsRef.current?.readyState === WebSocket.OPEN) {}
+      // TODO: If initial attempt fails, add a retry mechanism.
       const joinMessage: WebSocketMessage = {
         type: "join_session",
         qr_session: qrSessionId
@@ -54,15 +67,33 @@ export const useWebSocket = ({ qrSessionId }: UseWebSocketProps) => {
       
       // Handle different message types
       switch (message.type) {
+
         case "user_list_update":
           if (message.users) {
             setConnectedUsers(message.users);
             console.log(`Updated user list for session ${qrSessionId}:`, message.users);
           }
           break;
+        
+        case "item_selection":
+          if (message.item_id && message.user_id !== undefined) {
+            setItemSelections(prev => {
+              const newSelections = new Map(prev);
+              if (message.selected) {
+                newSelections.set(message.item_id!, message.user_id!);
+              } else {
+                newSelections.delete(message.item_id!);
+              }
+              return newSelections;
+            });
+            console.log(`User ${message.user_id} ${message.selected ? 'selected' : 'deselected'} item ${message.item_id}`);
+          }
+          break;
+        
         case "pong":
           console.log("Received pong");
           break;
+        
         default:
           console.log("Unknown message type:", message.type);
       }
@@ -104,5 +135,25 @@ export const useWebSocket = ({ qrSessionId }: UseWebSocketProps) => {
     };
   }, [qrSessionId]); // Re-run when qrSessionId changes
 
-  return { isConnected, connectionError, connectedUsers };
+  const sendItemSelection = (itemId: string, selected: boolean) => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      const message: WebSocketMessage = {
+        type: "item_selection",
+        item_id: itemId,
+        selected: selected
+      };
+      wsRef.current.send(JSON.stringify(message));
+      console.log(`Sent item selection: ${itemId} - ${selected ? 'selected' : 'deselected'}`);
+    } else {
+      console.error("WebSocket is not connected, cannot send item selection");
+    }
+  };
+
+  return { 
+    isConnected, 
+    connectionError, 
+    connectedUsers, 
+    itemSelections,
+    sendItemSelection 
+  };
 };
