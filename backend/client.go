@@ -49,6 +49,9 @@ type Message struct {
 	UserID    string `json:"user_id,omitempty"`
 	Content   string `json:"content,omitempty"`
 	Users     []User `json:"users,omitempty"`
+	// Item selection fields
+	ItemID   string `json:"item_id,omitempty"`
+	Selected bool   `json:"selected,omitempty"`
 }
 
 // User represents a connected user
@@ -184,6 +187,38 @@ func (c *Client) readPump() {
 			default:
 				close(c.send)
 				return
+			}
+		case "item_selection":
+			// Handle item selection/deselection
+			log.Printf("User %s %s item %s in session %s",
+				c.user.ID,
+				map[bool]string{true: "selected", false: "deselected"}[incomingMsg.Selected],
+				incomingMsg.ItemID,
+				c.user.QRSession)
+
+			// Add user ID to the message before broadcasting
+			incomingMsg.UserID = c.user.ID
+
+			// Re-marshal the message with user ID
+			messageWithUserID, err := json.Marshal(incomingMsg)
+			if err != nil {
+				log.Printf("Error marshaling item selection message: %v", err)
+				continue
+			}
+
+			// Broadcast to all other clients in the same session
+			if sessionClients, exists := c.hub.sessions[c.user.QRSession]; exists {
+				for client := range sessionClients {
+					if client != c { // Don't send back to sender
+						select {
+						case client.send <- messageWithUserID:
+						default:
+							close(client.send)
+							delete(c.hub.clients, client)
+							delete(sessionClients, client)
+						}
+					}
+				}
 			}
 		default:
 			// For other messages, broadcast to all clients in the same session
