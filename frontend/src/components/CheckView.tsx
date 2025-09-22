@@ -42,7 +42,7 @@ const CheckView: React.FC = () => {
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   
   // Initialize WebSocket connection for this QR session
-  const { isConnected, connectionError, connectedUsers } = useWebSocket({ qrSessionId: orderId || '' });
+  const { isConnected, connectionError, connectedUsers, itemSelections, sendItemSelection } = useWebSocket({ qrSessionId: orderId || '' });
 
   const fetchQRSession = useCallback(async (isPolling = false) => {
     try {
@@ -84,9 +84,10 @@ const CheckView: React.FC = () => {
     fetchQRSession(false);
 
     // Set up polling every 3 seconds
+    // TODO: Optimize or think of a more intelligent strategy
     const interval = setInterval(() => {
       fetchQRSession(true);
-    }, 3000);
+    }, 10000);
 
     setPollingInterval(interval);
 
@@ -148,11 +149,18 @@ const CheckView: React.FC = () => {
   const handleItemSelection = (itemId: string) => {
     setSelectedItems(prev => {
       const newSelection = new Set(prev);
-      if (newSelection.has(itemId)) {
+      const isCurrentlySelected = newSelection.has(itemId);
+      const willBeSelected = !isCurrentlySelected;
+      
+      if (isCurrentlySelected) {
         newSelection.delete(itemId);
       } else {
         newSelection.add(itemId);
       }
+      
+      // Send WebSocket message to notify other users
+      sendItemSelection(itemId, willBeSelected);
+      
       return newSelection;
     });
   };
@@ -265,41 +273,73 @@ const CheckView: React.FC = () => {
             
             <div style={{ marginBottom: '20px' }}>
               {qrSession.order.items.map((item) => {
-                const isSelected = selectedItems.has(item.id);
+                const isSelectedByMe = selectedItems.has(item.id);
+                const selectedByUserId = itemSelections.get(item.id);
+                const isSelectedByOther = selectedByUserId && !isSelectedByMe;
+                const selectedUser = connectedUsers.find(user => user.id === selectedByUserId);
+                
                 return (
                   <div 
                     key={item.id} 
-                    onClick={() => handleItemSelection(item.id)}
+                    onClick={() => !isSelectedByOther && handleItemSelection(item.id)}
                     style={{ 
                       display: 'flex', 
                       justifyContent: 'space-between', 
                       alignItems: 'center',
                       padding: '16px',
                       margin: '8px 0',
-                      border: `2px solid ${isSelected ? '#007bff' : '#e9ecef'}`,
+                      border: `2px solid ${
+                        isSelectedByMe ? '#007bff' : 
+                        isSelectedByOther ? '#dc3545' : 
+                        '#e9ecef'
+                      }`,
                       borderRadius: '8px',
-                      backgroundColor: isSelected ? '#f0f8ff' : '#ffffff',
-                      cursor: 'pointer',
+                      backgroundColor: 
+                        isSelectedByMe ? '#f0f8ff' : 
+                        isSelectedByOther ? '#fdf2f2' : 
+                        '#ffffff',
+                      cursor: isSelectedByOther ? 'not-allowed' : 'pointer',
+                      opacity: isSelectedByOther ? 0.7 : 1,
                       transition: 'all 0.2s ease',
-                      boxShadow: isSelected ? '0 2px 8px rgba(0, 123, 255, 0.2)' : '0 1px 3px rgba(0, 0, 0, 0.1)'
+                      boxShadow: 
+                        isSelectedByMe ? '0 2px 8px rgba(0, 123, 255, 0.2)' : 
+                        isSelectedByOther ? '0 2px 8px rgba(220, 53, 69, 0.2)' : 
+                        '0 1px 3px rgba(0, 0, 0, 0.1)'
                     }}
                   >
                     <div style={{ flex: 1 }}>
                       <div style={{ 
                         fontWeight: '500', 
                         marginBottom: '4px',
-                        color: isSelected ? '#0056b3' : '#212529'
+                        color: 
+                          isSelectedByMe ? '#0056b3' : 
+                          isSelectedByOther ? '#721c24' : 
+                          '#212529'
                       }}>
-                        {isSelected && '✓ '}{item.name}
+                        {isSelectedByMe && '✓ '}
+                        {isSelectedByOther && '🔒 '}
+                        {item.name}
                       </div>
                       <div style={{ fontSize: '14px', color: '#6c757d' }}>
                         Cantidad: {item.qty}
+                        {isSelectedByOther && selectedUser && (
+                          <span style={{ 
+                            marginLeft: '8px', 
+                            color: '#dc3545',
+                            fontWeight: '500'
+                          }}>
+                            • Seleccionado por {selectedUser.avatar}
+                          </span>
+                        )}
                       </div>
                     </div>
                     <div style={{ 
                       fontWeight: '600', 
                       fontSize: '16px',
-                      color: isSelected ? '#0056b3' : '#212529'
+                      color: 
+                        isSelectedByMe ? '#0056b3' : 
+                        isSelectedByOther ? '#721c24' : 
+                        '#212529'
                     }}>
                       {formatPrice(item.price * item.qty)}
                     </div>
@@ -334,7 +374,7 @@ const CheckView: React.FC = () => {
             }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                 <p style={{ margin: '0', color: '#6c757d', fontSize: '14px' }}>
-                  💡 Toca en los items para seleccionar lo que ordenaste. En las próximas iteraciones podrás pagar tu parte
+                  💡 Toca en los items para seleccionar lo que ordenaste. Los items bloqueados (🔒) fueron seleccionados por otros usuarios. En las próximas iteraciones podrás pagar tu parte
                 </p>
                 <button
                   onClick={() => fetchQRSession(false)}
