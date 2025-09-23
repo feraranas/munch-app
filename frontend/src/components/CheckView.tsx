@@ -424,83 +424,18 @@ const CheckView: React.FC = () => {
               </div>
               
               {/* Payment Summary Section */}
-              <div style={{
-                backgroundColor: '#f8f9fa',
-                border: '1px solid #dee2e6',
-                borderRadius: '8px',
-                padding: '15px',
-                marginBottom: '20px'
-              }}>
-                <div style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  marginBottom: '10px'
-                }}>
-                  <span style={{ fontSize: '16px', fontWeight: '500' }}>Tu total seleccionado:</span>
-                  <span style={{ 
-                    fontSize: '18px', 
-                    fontWeight: 'bold',
-                    color: calculateMyTotal() > 0 ? '#007bff' : '#6c757d'
-                  }}>
-                    {formatPrice(calculateMyTotal())}
-                  </span>
-                </div>
-                
-                <div style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  marginBottom: '15px',
-                  paddingTop: '10px',
-                  borderTop: '1px solid #dee2e6'
-                }}>
-                  <span style={{ fontSize: '14px', color: '#6c757d' }}>Total pagado por el grupo:</span>
-                  <span style={{ fontSize: '16px', fontWeight: '500', color: '#28a745' }}>
-                    {formatPrice(totalPaid + totalPaidByGroup)}
-                  </span>
-                </div>
-                
-                <div style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  marginBottom: '15px'
-                }}>
-                  <span style={{ fontSize: '16px', fontWeight: '500' }}>Saldo restante:</span>
-                  <span style={{ 
-                    fontSize: '18px', 
-                    fontWeight: 'bold',
-                    color: calculateRemainingBalance() > 0 ? '#dc3545' : '#28a745'
-                  }}>
-                    {formatPrice(calculateRemainingBalance())}
-                  </span>
-                </div>
-                
-                <button
-                  onClick={handlePayment}
-                  disabled={calculateMyTotal() <= 0 || paymentProcessing}
-                  style={{
-                    width: '100%',
-                    padding: '12px',
-                    backgroundColor: calculateMyTotal() > 0 ? '#007bff' : '#6c757d',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '6px',
-                    fontSize: '16px',
-                    fontWeight: '500',
-                    cursor: calculateMyTotal() > 0 ? 'pointer' : 'not-allowed',
-                    transition: 'background-color 0.2s ease'
-                  }}
-                >
-                  {paymentProcessing ? '⏳ Procesando...' : 
-                   calculateMyTotal() > 0 ? `💳 Pagar ${formatPrice(calculateMyTotal())}` : 
-                   '📱 Selecciona items para pagar'}
-                </button>
-              </div>
+              <PaymentSummary
+                myTotal={calculateMyTotal()}
+                totalPaidByGroup={totalPaidByGroup}
+                totalPaid={totalPaid}
+                remainingBalance={calculateRemainingBalance()}
+                paymentProcessing={paymentProcessing}
+                formatPrice={formatPrice}
+                onPayment={handlePayment}
+              />
             </div>
             
-            <div style={{ 
+            {/* <div style={{ 
               marginTop: '20px', 
               padding: '15px', 
               backgroundColor: '#f8f9fa', 
@@ -530,7 +465,7 @@ const CheckView: React.FC = () => {
               <p style={{ margin: '0', color: '#6c757d', fontSize: '12px' }}>
                 🔄 Esta orden se actualiza automáticamente cada 3 segundos si el personal hace cambios
               </p>
-            </div>
+            </div> */}
           </div>
         )}
         
