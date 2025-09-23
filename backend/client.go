@@ -52,6 +52,8 @@ type Message struct {
 	// Item selection fields
 	ItemID   string `json:"item_id,omitempty"`
 	Selected bool   `json:"selected,omitempty"`
+	// Payment fields
+	Amount float64 `json:"amount,omitempty"`
 }
 
 // User represents a connected user
@@ -217,6 +219,35 @@ func (c *Client) readPump() {
 							delete(c.hub.clients, client)
 							delete(sessionClients, client)
 						}
+					}
+				}
+			}
+		case "payment_confirmed":
+			// Handle payment confirmation
+			log.Printf("User %s confirmed payment of $%.2f in session %s",
+				c.user.ID,
+				incomingMsg.Amount,
+				c.user.QRSession)
+
+			// Add user ID to the message before broadcasting
+			incomingMsg.UserID = c.user.ID
+
+			// Re-marshal the message with user ID
+			messageWithUserID, err := json.Marshal(incomingMsg)
+			if err != nil {
+				log.Printf("Error marshaling payment confirmation message: %v", err)
+				continue
+			}
+
+			// Broadcast to all clients in the same session (including sender for consistency)
+			if sessionClients, exists := c.hub.sessions[c.user.QRSession]; exists {
+				for client := range sessionClients {
+					select {
+					case client.send <- messageWithUserID:
+					default:
+						close(client.send)
+						delete(c.hub.clients, client)
+						delete(sessionClients, client)
 					}
 				}
 			}

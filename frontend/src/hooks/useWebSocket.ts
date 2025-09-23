@@ -20,12 +20,8 @@ interface WebSocketMessage {
   // Item selection fields
   item_id?: string;
   selected?: boolean;
-}
-
-interface ItemSelection {
-  item_id: string;
-  user_id: string;
-  selected: boolean;
+  // Payment fields
+  amount?: number;
 }
 
 export const useWebSocket = ({ qrSessionId }: UseWebSocketProps) => {
@@ -34,6 +30,7 @@ export const useWebSocket = ({ qrSessionId }: UseWebSocketProps) => {
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [connectedUsers, setConnectedUsers] = useState<User[]>([]);
   const [itemSelections, setItemSelections] = useState<Map<string, string>>(new Map());
+  const [totalPaidByGroup, setTotalPaidByGroup] = useState<number>(0);
 
   useEffect(() => {
     // Prevent double connections in React Strict Mode
@@ -75,20 +72,27 @@ export const useWebSocket = ({ qrSessionId }: UseWebSocketProps) => {
           }
           break;
         
-        case "item_selection":
-          if (message.item_id && message.user_id !== undefined) {
-            setItemSelections(prev => {
-              const newSelections = new Map(prev);
-              if (message.selected) {
-                newSelections.set(message.item_id!, message.user_id!);
-              } else {
-                newSelections.delete(message.item_id!);
-              }
-              return newSelections;
-            });
-            console.log(`User ${message.user_id} ${message.selected ? 'selected' : 'deselected'} item ${message.item_id}`);
-          }
-          break;
+          case "item_selection":
+            if (message.item_id && message.user_id !== undefined) {
+              setItemSelections(prev => {
+                const newSelections = new Map(prev);
+                if (message.selected) {
+                  newSelections.set(message.item_id!, message.user_id!);
+                } else {
+                  newSelections.delete(message.item_id!);
+                }
+                return newSelections;
+              });
+              console.log(`User ${message.user_id} ${message.selected ? 'selected' : 'deselected'} item ${message.item_id}`);
+            }
+            break;
+          
+          case "payment_confirmed":
+            if (message.amount && message.user_id) {
+              setTotalPaidByGroup(prev => prev + message.amount!);
+              console.log(`User ${message.user_id} confirmed payment of $${message.amount}`);
+            }
+            break;
         
         case "pong":
           console.log("Received pong");
@@ -149,11 +153,26 @@ export const useWebSocket = ({ qrSessionId }: UseWebSocketProps) => {
     }
   };
 
+  const sendPaymentConfirmation = (amount: number) => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      const message: WebSocketMessage = {
+        type: "payment_confirmed",
+        amount: amount
+      };
+      wsRef.current.send(JSON.stringify(message));
+      console.log(`Sent payment confirmation: $${amount}`);
+    } else {
+      console.error("WebSocket is not connected, cannot send payment confirmation");
+    }
+  };
+
   return { 
     isConnected, 
     connectionError, 
     connectedUsers, 
     itemSelections,
-    sendItemSelection 
+    totalPaidByGroup,
+    sendItemSelection,
+    sendPaymentConfirmation
   };
 };

@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import * as Sentry from '@sentry/react';
 import { useWebSocket } from '../hooks/useWebSocket';
 import CollaborativeUsers from './MockProfile';
+import PaymentSummary from './PaymentSummary';
 
 interface RouteParams {
   orderId: string; // This is actually the QR-ID now
@@ -40,9 +41,19 @@ const CheckView: React.FC = () => {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+  const [showPaymentModal, setShowPaymentModal] = useState<boolean>(false);
+  const [paymentProcessing, setPaymentProcessing] = useState<boolean>(false);
+  const [totalPaid, setTotalPaid] = useState<number>(0);
   
   // Initialize WebSocket connection for this QR session
-  const { isConnected, connectionError, connectedUsers, itemSelections, sendItemSelection } = useWebSocket({ qrSessionId: orderId || '' });
+  const { isConnected,
+          connectionError, 
+          connectedUsers,
+          itemSelections,
+          totalPaidByGroup,
+          sendItemSelection,
+          sendPaymentConfirmation 
+        } = useWebSocket({ qrSessionId: orderId || '' });
 
   const fetchQRSession = useCallback(async (isPolling = false) => {
     try {
@@ -144,6 +155,52 @@ const CheckView: React.FC = () => {
       minute: '2-digit', 
       second: '2-digit' 
     });
+  };
+
+  const calculateMyTotal = () => {
+    if (!qrSession?.order?.items) return 0;
+    
+    return qrSession.order.items
+      .filter(item => selectedItems.has(item.id))
+      .reduce((total, item) => total + (item.price * item.qty), 0);
+  };
+
+  const calculateRemainingBalance = () => {
+    if (!qrSession?.order?.total) return 0;
+    return qrSession.order.total - (totalPaid + totalPaidByGroup);
+  };
+
+  const handlePayment = () => {
+    const myTotal = calculateMyTotal();
+    if (myTotal <= 0) {
+      alert('Selecciona al menos un item para pagar');
+      return;
+    }
+    setShowPaymentModal(true);
+  };
+
+  const confirmPayment = async () => {
+    setPaymentProcessing(true);
+    const myTotal = calculateMyTotal();
+    
+    // Mock Stripe payment delay
+    await new Promise(resolve => setTimeout(resolve, 2000));
+    
+    // Update local total paid
+    setTotalPaid(prev => prev + myTotal);
+    
+    // Send WebSocket message to broadcast payment to all users
+    sendPaymentConfirmation(myTotal);
+    
+    // TODO: Make the items have a visual cue about them being paid
+    // (Or make them disappear?)
+    // Clear selected items after payment
+    setSelectedItems(new Set());
+    
+    setPaymentProcessing(false);
+    setShowPaymentModal(false);
+    
+    alert('¡Pago confirmado! Gracias por tu pago.');
   };
 
   const handleItemSelection = (itemId: string) => {
@@ -359,14 +416,26 @@ const CheckView: React.FC = () => {
                 alignItems: 'center',
                 fontSize: '18px',
                 fontWeight: 'bold',
-                color: '#2c3e50'
+                color: '#2c3e50',
+                marginBottom: '15px'
               }}>
-                <span>Total:</span>
+                <span>Total de la cuenta:</span>
                 <span>{formatPrice(qrSession.order.total)}</span>
               </div>
+              
+              {/* Payment Summary Section */}
+              <PaymentSummary
+                myTotal={calculateMyTotal()}
+                totalPaidByGroup={totalPaidByGroup}
+                totalPaid={totalPaid}
+                remainingBalance={calculateRemainingBalance()}
+                paymentProcessing={paymentProcessing}
+                formatPrice={formatPrice}
+                onPayment={handlePayment}
+              />
             </div>
             
-            <div style={{ 
+            {/* <div style={{ 
               marginTop: '20px', 
               padding: '15px', 
               backgroundColor: '#f8f9fa', 
@@ -396,6 +465,128 @@ const CheckView: React.FC = () => {
               <p style={{ margin: '0', color: '#6c757d', fontSize: '12px' }}>
                 🔄 Esta orden se actualiza automáticamente cada 3 segundos si el personal hace cambios
               </p>
+            </div> */}
+          </div>
+        )}
+        
+        {/* Mock Stripe Payment Modal */}
+        {showPaymentModal && (
+          <div style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            justifyContent: 'center',
+            alignItems: 'center',
+            zIndex: 1000
+          }}>
+            <div style={{
+              backgroundColor: 'white',
+              borderRadius: '12px',
+              padding: '24px',
+              maxWidth: '400px',
+              width: '90%',
+              boxShadow: '0 10px 30px rgba(0, 0, 0, 0.3)'
+            }}>
+              <div style={{
+                textAlign: 'center',
+                marginBottom: '20px'
+              }}>
+                <h3 style={{ margin: '0 0 8px 0', color: '#2c3e50' }}>💳 Pago con Stripe</h3>
+                <p style={{ margin: '0', color: '#6c757d', fontSize: '14px' }}>
+                  Pago simulado - No se procesará dinero real
+                </p>
+              </div>
+              
+              <div style={{
+                backgroundColor: '#f8f9fa',
+                border: '1px solid #dee2e6',
+                borderRadius: '8px',
+                padding: '16px',
+                marginBottom: '20px'
+              }}>
+                <div style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: '8px'
+                }}>
+                  <span style={{ fontSize: '16px' }}>Total a pagar:</span>
+                  <span style={{ 
+                    fontSize: '20px', 
+                    fontWeight: 'bold',
+                    color: '#007bff'
+                  }}>
+                    {formatPrice(calculateMyTotal())}
+                  </span>
+                </div>
+                <div style={{ fontSize: '14px', color: '#6c757d' }}>
+                  {selectedItems.size} item{selectedItems.size !== 1 ? 's' : ''} seleccionado{selectedItems.size !== 1 ? 's' : ''}
+                </div>
+              </div>
+              
+              {/* Mock Credit Card Form */}
+              <div style={{ marginBottom: '20px' }}>
+                <div style={{
+                  border: '1px solid #dee2e6',
+                  borderRadius: '8px',
+                  padding: '12px',
+                  backgroundColor: '#f8f9fa',
+                  fontSize: '14px',
+                  color: '#6c757d'
+                }}>
+                  <div style={{ marginBottom: '8px' }}>
+                    💳 **** **** **** 4242 (Mock Stripe Card)
+                  </div>
+                  <div>
+                    🔒 Pago seguro simulado
+                  </div>
+                </div>
+              </div>
+              
+              <div style={{
+                display: 'flex',
+                gap: '12px'
+              }}>
+                <button
+                  onClick={() => setShowPaymentModal(false)}
+                  disabled={paymentProcessing}
+                  style={{
+                    flex: 1,
+                    padding: '12px',
+                    backgroundColor: '#6c757d',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    fontSize: '16px',
+                    cursor: paymentProcessing ? 'not-allowed' : 'pointer',
+                    opacity: paymentProcessing ? 0.6 : 1
+                  }}
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={confirmPayment}
+                  disabled={paymentProcessing}
+                  style={{
+                    flex: 2,
+                    padding: '12px',
+                    backgroundColor: '#28a745',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '6px',
+                    fontSize: '16px',
+                    fontWeight: '500',
+                    cursor: paymentProcessing ? 'not-allowed' : 'pointer',
+                    opacity: paymentProcessing ? 0.6 : 1
+                  }}
+                >
+                  {paymentProcessing ? '⏳ Procesando...' : '✅ Confirmar Pago'}
+                </button>
+              </div>
             </div>
           </div>
         )}

@@ -212,20 +212,21 @@ There is no seamless way today to connect the restaurant’s POS system with a c
 
 - Backend: Locking mechanism (optimistic or DB row lock).
 
-*Iteration 4 Part 3 – Monitor Concurrency Performance*
-
-- DevOps: Monitor concurrency performance (load test with 10–20 users).
-
-*Iteration 4 Part 4 – Test race conditions*
-
-- QA: Test race conditions (two users select same dish at same time).
-
-*Iteration 5 – Share Calculation*
+*Iteration 4 Part 3 – Share Calculation*
 
 - Frontend: Running total, remaining balance UI.
 - Backend: Calculation logic (per-user, per-session).
+
+*Iteration 4 Part 4 – Monitor Concurrency Performance*
+
+- DevOps: Monitor concurrency performance (load test with 10–20 users).
 - DevOps: Metrics/logging for calculation flow.
+
+*Iteration 4 Part 5 – Test race conditions*
+
 - QA: Validate edge cases (0 items, unselect all).
+- QA: Test race conditions (two users select same dish at same time).
+
 
 *Iteration 6 – Tip Handling*
 
