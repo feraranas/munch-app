@@ -4,6 +4,7 @@ import * as Sentry from '@sentry/react';
 import { useWebSocket } from '../hooks/useWebSocket';
 import CollaborativeUsers from './MockProfile';
 import PaymentSummary from './PaymentSummary';
+import OrderItemsList from './OrderItemsList';
 
 interface RouteParams {
   orderId: string; // This is actually the QR-ID now
@@ -38,7 +39,7 @@ const CheckView: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [qrSession, setQRSession] = useState<QRSessionResponse | null>(null);
   const [polling, setPolling] = useState<boolean>(false);
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  // const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [showPaymentModal, setShowPaymentModal] = useState<boolean>(false);
@@ -71,7 +72,7 @@ const CheckView: React.FC = () => {
       
       const sessionData = await response.json();
       setQRSession(sessionData);
-      setLastUpdated(new Date());
+      // setLastUpdated(new Date());
       setError(null); // Clear any previous errors
     } catch (err) {
       console.error('Error fetching QR session:', err);
@@ -148,14 +149,14 @@ const CheckView: React.FC = () => {
     }).format(price);
   };
 
-  const formatLastUpdated = () => {
-    if (!lastUpdated) return '';
-    return lastUpdated.toLocaleTimeString('es-MX', { 
-      hour: '2-digit', 
-      minute: '2-digit', 
-      second: '2-digit' 
-    });
-  };
+  // const formatLastUpdated = () => {
+  //   if (!lastUpdated) return '';
+  //   return lastUpdated.toLocaleTimeString('es-MX', { 
+  //     hour: '2-digit', 
+  //     minute: '2-digit', 
+  //     second: '2-digit' 
+  //   });
+  // };
 
   const calculateMyTotal = () => {
     if (!qrSession?.order?.items) return 0;
@@ -225,11 +226,11 @@ const CheckView: React.FC = () => {
   return (
     <div className="container">
       <div className="card">
-        <h2>🍽️ Tu Cuenta - Las Gaoneras</h2>
-        <p><strong>QR ID:</strong> {orderId}</p>
-        {qrSession?.table_number && (
+        {/* <h2>🍽️ Tu Cuenta - Las Gaoneras</h2> */}
+        {/* <p><strong>QR ID:</strong> {orderId}</p> */}
+        {/* {qrSession?.table_number && (
           <p><strong>Mesa:</strong> {qrSession.table_number}</p>
-        )}
+        )} */}
         
         {/* Collaborative Users Component - shows all connected users */}
         {orderId && (
@@ -256,7 +257,7 @@ const CheckView: React.FC = () => {
         )}
         
         {/* Real-time status indicator */}
-        <div style={{ 
+        {/* <div style={{ 
           display: 'flex', 
           justifyContent: 'space-between', 
           alignItems: 'center',
@@ -282,7 +283,7 @@ const CheckView: React.FC = () => {
               Última actualización: {formatLastUpdated()}
             </span>
           )}
-        </div>
+        </div> */}
         
         {qrSession && !qrSession.has_order && (
           <div style={{ 
@@ -320,90 +321,22 @@ const CheckView: React.FC = () => {
         
         {qrSession && qrSession.has_order && qrSession.order && (
           <div style={{ marginTop: '20px' }}>
-            <div style={{ 
+            {/* <div style={{ 
               borderBottom: '2px solid #e9ecef', 
               paddingBottom: '15px',
               marginBottom: '20px'
             }}>
               <h3>📋 Detalles del Pedido</h3>
-            </div>
+            </div> */}
             
-            <div style={{ marginBottom: '20px' }}>
-              {qrSession.order.items.map((item) => {
-                const isSelectedByMe = selectedItems.has(item.id);
-                const selectedByUserId = itemSelections.get(item.id);
-                const isSelectedByOther = selectedByUserId && !isSelectedByMe;
-                const selectedUser = connectedUsers.find(user => user.id === selectedByUserId);
-                
-                return (
-                  <div 
-                    key={item.id} 
-                    onClick={() => !isSelectedByOther && handleItemSelection(item.id)}
-                    style={{ 
-                      display: 'flex', 
-                      justifyContent: 'space-between', 
-                      alignItems: 'center',
-                      padding: '16px',
-                      margin: '8px 0',
-                      border: `2px solid ${
-                        isSelectedByMe ? '#007bff' : 
-                        isSelectedByOther ? '#dc3545' : 
-                        '#e9ecef'
-                      }`,
-                      borderRadius: '8px',
-                      backgroundColor: 
-                        isSelectedByMe ? '#f0f8ff' : 
-                        isSelectedByOther ? '#fdf2f2' : 
-                        '#ffffff',
-                      cursor: isSelectedByOther ? 'not-allowed' : 'pointer',
-                      opacity: isSelectedByOther ? 0.7 : 1,
-                      transition: 'all 0.2s ease',
-                      boxShadow: 
-                        isSelectedByMe ? '0 2px 8px rgba(0, 123, 255, 0.2)' : 
-                        isSelectedByOther ? '0 2px 8px rgba(220, 53, 69, 0.2)' : 
-                        '0 1px 3px rgba(0, 0, 0, 0.1)'
-                    }}
-                  >
-                    <div style={{ flex: 1 }}>
-                      <div style={{ 
-                        fontWeight: '500', 
-                        marginBottom: '4px',
-                        color: 
-                          isSelectedByMe ? '#0056b3' : 
-                          isSelectedByOther ? '#721c24' : 
-                          '#212529'
-                      }}>
-                        {isSelectedByMe && '✓ '}
-                        {isSelectedByOther && '🔒 '}
-                        {item.name}
-                      </div>
-                      <div style={{ fontSize: '14px', color: '#6c757d' }}>
-                        Cantidad: {item.qty}
-                        {isSelectedByOther && selectedUser && (
-                          <span style={{ 
-                            marginLeft: '8px', 
-                            color: '#dc3545',
-                            fontWeight: '500'
-                          }}>
-                            • Seleccionado por {selectedUser.avatar}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    <div style={{ 
-                      fontWeight: '600', 
-                      fontSize: '16px',
-                      color: 
-                        isSelectedByMe ? '#0056b3' : 
-                        isSelectedByOther ? '#721c24' : 
-                        '#212529'
-                    }}>
-                      {formatPrice(item.price * item.qty)}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+            <OrderItemsList
+              items={qrSession.order.items}
+              selectedItems={selectedItems}
+              itemSelections={itemSelections}
+              connectedUsers={connectedUsers}
+              onItemSelection={handleItemSelection}
+              formatPrice={formatPrice}
+            />
             
             <div style={{ 
               borderTop: '2px solid #e9ecef', 
