@@ -60,8 +60,9 @@ export const useWebSocket = ({ qrSessionId }: UseWebSocketProps) => {
     });
 
     ws.addEventListener("message", (e) => {
-      const message: WebSocketMessage = JSON.parse(e.data);
-      console.log(`RECEIVED message for session ${qrSessionId}:`, message);
+      try {
+        const message: WebSocketMessage = JSON.parse(e.data);
+        console.log(`RECEIVED message for session ${qrSessionId}:`, message);
       
       // Handle different message types
       switch (message.type) {
@@ -101,6 +102,11 @@ export const useWebSocket = ({ qrSessionId }: UseWebSocketProps) => {
         
         default:
           console.log("Unknown message type:", message.type);
+      }
+      } catch (error) {
+        console.error("Error parsing WebSocket message:", error);
+        console.error("Raw message data:", e.data);
+        setConnectionError("Failed to parse server message");
       }
     });
 
