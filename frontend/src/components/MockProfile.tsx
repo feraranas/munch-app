@@ -26,25 +26,15 @@ const CollaborativeUsers: React.FC<CollaborativeUsersProps> = ({
 
   const SimpleAvatar = ({ bgColor, children }: { bgColor: string; children: string }) => (
     <div
-      style={{
-        width: 40,
-        height: 40,
-        borderRadius: '50%',
-        backgroundColor: bgColor,
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        fontSize: '1rem',
-        color: 'white',
-        fontWeight: 'bold',
-      }}
+      className="w-10 h-10 rounded-full flex items-center justify-center text-base text-white font-bold"
+      style={{ backgroundColor: bgColor }}
     >
       {children}
     </div>
   );
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'row' as const, gap: '16px' }}>
+    <div className="flex flex-row gap-4">
       {connectedUsers
         .filter(user => user.qr_session === qrSessionId)
         .map((user, index) => (

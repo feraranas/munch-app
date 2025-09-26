@@ -244,15 +244,7 @@ const CheckView: React.FC = () => {
         
         {/* WebSocket connection error */}
         {connectionError && (
-          <div style={{
-            padding: '12px',
-            backgroundColor: '#f8d7da',
-            border: '1px solid #f5c6cb',
-            borderRadius: '6px',
-            color: '#721c24',
-            fontSize: '14px',
-            marginBottom: '15px'
-          }}>
+          <div className="p-3 bg-red-100 border border-red-300 rounded-md text-red-800 text-sm mb-4">
             ⚠️ Error de conexión: {connectionError}
           </div>
         )}
@@ -287,33 +279,18 @@ const CheckView: React.FC = () => {
         </div> */}
         
         {qrSession && !qrSession.has_order && (
-          <div style={{ 
-            marginTop: '20px', 
-            padding: '20px', 
-            backgroundColor: '#fff3cd', 
-            border: '1px solid #ffeeba',
-            borderRadius: '8px',
-            textAlign: 'center' as const
-          }}>
+          <div className="mt-5 p-5 bg-yellow-100 border border-yellow-300 rounded-lg text-center">
             <h3>⏳ Esperando Orden</h3>
             <p>{qrSession.message}</p>
-            <p style={{ fontSize: '14px', color: '#6c757d' }}>
+            <p className="text-sm text-gray-500">
               El personal del restaurante creará tu orden. La página se actualizará automáticamente cada 3 segundos.
             </p>
             <button
               onClick={() => fetchQRSession(false)}
               disabled={polling}
-              style={{
-                marginTop: '10px',
-                padding: '8px 16px',
-                backgroundColor: '#007bff',
-                color: 'white',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: polling ? 'not-allowed' : 'pointer',
-                fontSize: '14px',
-                opacity: polling ? 0.6 : 1
-              }}
+              className={`mt-3 py-2 px-4 bg-blue-600 text-white border-none rounded-md text-sm transition-colors duration-200 ${
+                polling ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:bg-blue-700'
+              }`}
             >
               {polling ? 'Actualizando...' : '🔄 Actualizar ahora'}
             </button>
@@ -321,15 +298,7 @@ const CheckView: React.FC = () => {
         )}
         
         {qrSession && qrSession.has_order && qrSession.order && (
-          <div style={{ marginTop: '20px' }}>
-            {/* <div style={{ 
-              borderBottom: '2px solid #e9ecef', 
-              paddingBottom: '15px',
-              marginBottom: '20px'
-            }}>
-              <h3>📋 Detalles del Pedido</h3>
-            </div> */}
-            
+          <div className="mt-5">
             <OrderItemsList
               items={qrSession.order.items}
               selectedItems={selectedItems}
@@ -339,24 +308,11 @@ const CheckView: React.FC = () => {
               formatPrice={formatPrice}
             />
             
-            <div style={{ 
-              borderTop: '2px solid #e9ecef', 
-              paddingTop: '15px',
-              marginTop: '20px'
-            }}>
-              <div style={{ 
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                alignItems: 'center',
-                fontSize: '18px',
-                fontWeight: 'bold',
-                color: '#2c3e50',
-                marginBottom: '15px'
-              }}>
+            <div className="border-t-2 border-gray-200 pt-4 mt-5">
+              <div className="flex justify-between items-center text-lg font-bold text-gray-800 mb-4">
                 <span>Total de la cuenta:</span>
                 <span>{formatPrice(qrSession.order.total)}</span>
               </div>
-              
             </div>
             
             {/* <div style={{ 
@@ -395,74 +351,31 @@ const CheckView: React.FC = () => {
         
         {/* Mock Stripe Payment Modal */}
         {showPaymentModal && (
-          <div style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.5)',
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            zIndex: 1000
-          }}>
-            <div style={{
-              backgroundColor: 'white',
-              borderRadius: '12px',
-              padding: '24px',
-              maxWidth: '400px',
-              width: '90%',
-              boxShadow: '0 10px 30px rgba(0, 0, 0, 0.3)'
-            }}>
-              <div style={{
-                textAlign: 'center',
-                marginBottom: '20px'
-              }}>
-                <h3 style={{ margin: '0 0 8px 0', color: '#2c3e50' }}>💳 Pago con Stripe</h3>
-                <p style={{ margin: '0', color: '#6c757d', fontSize: '14px' }}>
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-[1000]">
+            <div className="bg-white rounded-xl p-6 max-w-md w-[90%] shadow-2xl">
+              <div className="text-center mb-5">
+                <h3 className="m-0 mb-2 text-gray-800">💳 Pago con Stripe</h3>
+                <p className="m-0 text-gray-500 text-sm">
                   Pago simulado - No se procesará dinero real
                 </p>
               </div>
               
-              <div style={{
-                backgroundColor: '#f8f9fa',
-                border: '1px solid #dee2e6',
-                borderRadius: '8px',
-                padding: '16px',
-                marginBottom: '20px'
-              }}>
-                <div style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
-                  marginBottom: '8px'
-                }}>
-                  <span style={{ fontSize: '16px' }}>Total a pagar:</span>
-                  <span style={{ 
-                    fontSize: '20px', 
-                    fontWeight: 'bold',
-                    color: '#007bff'
-                  }}>
+              <div className="bg-gray-50 border border-gray-300 rounded-lg p-4 mb-5">
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-base">Total a pagar:</span>
+                  <span className="text-xl font-bold text-blue-600">
                     {formatPrice(calculateMyTotal())}
                   </span>
                 </div>
-                <div style={{ fontSize: '14px', color: '#6c757d' }}>
+                <div className="text-sm text-gray-500">
                   {selectedItems.size} item{selectedItems.size !== 1 ? 's' : ''} seleccionado{selectedItems.size !== 1 ? 's' : ''}
                 </div>
               </div>
               
               {/* Mock Credit Card Form */}
-              <div style={{ marginBottom: '20px' }}>
-                <div style={{
-                  border: '1px solid #dee2e6',
-                  borderRadius: '8px',
-                  padding: '12px',
-                  backgroundColor: '#f8f9fa',
-                  fontSize: '14px',
-                  color: '#6c757d'
-                }}>
-                  <div style={{ marginBottom: '8px' }}>
+              <div className="mb-5">
+                <div className="border border-gray-300 rounded-lg p-3 bg-gray-50 text-sm text-gray-500">
+                  <div className="mb-2">
                     💳 **** **** **** 4242 (Mock Stripe Card)
                   </div>
                   <div>
@@ -472,42 +385,22 @@ const CheckView: React.FC = () => {
               </div>
               
               {/* Show Payment Modal */}
-              <div style={{
-                display: 'flex',
-                gap: '12px'
-              }}>
+              <div className="flex gap-3">
                 <button
                   onClick={() => setShowPaymentModal(false)}
                   disabled={paymentProcessing}
-                  style={{
-                    flex: 1,
-                    padding: '12px',
-                    backgroundColor: '#6c757d',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '6px',
-                    fontSize: '16px',
-                    cursor: paymentProcessing ? 'not-allowed' : 'pointer',
-                    opacity: paymentProcessing ? 0.6 : 1
-                  }}
+                  className={`flex-1 py-3 px-4 bg-gray-500 text-white border-none rounded-md text-base transition-colors duration-200 ${
+                    paymentProcessing ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:bg-gray-600'
+                  }`}
                 >
                   Cancelar
                 </button>
                 <button
                   onClick={confirmPayment}
                   disabled={paymentProcessing}
-                  style={{
-                    flex: 2,
-                    padding: '12px',
-                    backgroundColor: '#28a745',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '6px',
-                    fontSize: '16px',
-                    fontWeight: '500',
-                    cursor: paymentProcessing ? 'not-allowed' : 'pointer',
-                    opacity: paymentProcessing ? 0.6 : 1
-                  }}
+                  className={`flex-[2] py-3 px-4 bg-green-600 text-white border-none rounded-md text-base font-medium transition-colors duration-200 ${
+                    paymentProcessing ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:bg-green-700'
+                  }`}
                 >
                   {paymentProcessing ? '⏳ Procesando...' : '✅ Confirmar Pago'}
                 </button>
