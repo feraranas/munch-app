@@ -30,7 +30,7 @@ const OrderItemsList: React.FC<OrderItemsListProps> = React.memo(({
   formatPrice
 }) => {
   return (
-    <div style={{ marginBottom: '20px' }}>
+    <div className="mb-5">
       {items.map((item) => {
         const isSelectedByMe = selectedItems.has(item.id);
         const selectedByUserId = itemSelections.get(item.id);
@@ -41,65 +41,49 @@ const OrderItemsList: React.FC<OrderItemsListProps> = React.memo(({
           <div 
             key={item.id} 
             onClick={() => !isSelectedByOther && onItemSelection(item.id)}
-            style={{ 
-              display: 'flex', 
-              justifyContent: 'space-between', 
-              alignItems: 'center',
-              padding: '16px',
-              margin: '8px 0',
-              border: `2px solid ${
-                isSelectedByMe ? '#007bff' : 
-                isSelectedByOther ? '#dc3545' : 
-                '#e9ecef'
-              }`,
-              borderRadius: '8px',
-              backgroundColor: 
-                isSelectedByMe ? '#f0f8ff' : 
-                isSelectedByOther ? '#fdf2f2' : 
-                '#ffffff',
-              cursor: isSelectedByOther ? 'not-allowed' : 'pointer',
-              opacity: isSelectedByOther ? 0.7 : 1,
-              transition: 'all 0.2s ease',
-              boxShadow: 
-                isSelectedByMe ? '0 2px 8px rgba(0, 123, 255, 0.2)' : 
-                isSelectedByOther ? '0 2px 8px rgba(220, 53, 69, 0.2)' : 
-                '0 1px 3px rgba(0, 0, 0, 0.1)'
-            }}
+            className={`
+              flex justify-between items-center p-4 my-2 border-2 rounded-lg transition-all duration-200
+              ${isSelectedByMe 
+                ? 'border-blue-600 bg-blue-50 shadow-blue-200 shadow-md' 
+                : isSelectedByOther 
+                  ? 'border-red-500 bg-red-50 shadow-red-200 shadow-md opacity-70' 
+                  : 'border-gray-200 bg-white shadow-sm'
+              }
+              ${isSelectedByOther ? 'cursor-not-allowed' : 'cursor-pointer hover:shadow-md'}
+            `}
           >
-            <div style={{ flex: 1 }}>
-              <div style={{ 
-                fontWeight: '500', 
-                marginBottom: '4px',
-                color: 
-                  isSelectedByMe ? '#0056b3' : 
-                  isSelectedByOther ? '#721c24' : 
-                  '#212529'
-              }}>
+            <div className="flex-1">
+              <div className={`
+                font-medium mb-1
+                ${isSelectedByMe 
+                  ? 'text-blue-700' 
+                  : isSelectedByOther 
+                    ? 'text-red-800' 
+                    : 'text-gray-900'
+                }
+              `}>
                 {isSelectedByMe && '✓ '}
                 {isSelectedByOther && '🔒 '}
                 {item.name}
               </div>
-              <div style={{ fontSize: '14px', color: '#6c757d' }}>
+              <div className="text-sm text-gray-500">
                 Cantidad: {item.qty}
                 {isSelectedByOther && selectedUser && (
-                  <span style={{ 
-                    marginLeft: '8px', 
-                    color: '#dc3545',
-                    fontWeight: '500'
-                  }}>
+                  <span className="ml-2 text-red-500 font-medium">
                     • Seleccionado por {selectedUser.avatar}
                   </span>
                 )}
               </div>
             </div>
-            <div style={{ 
-              fontWeight: '600', 
-              fontSize: '16px',
-              color: 
-                isSelectedByMe ? '#0056b3' : 
-                isSelectedByOther ? '#721c24' : 
-                '#212529'
-            }}>
+            <div className={`
+              font-semibold text-base
+              ${isSelectedByMe 
+                ? 'text-blue-700' 
+                : isSelectedByOther 
+                  ? 'text-red-800' 
+                  : 'text-gray-900'
+              }
+            `}>
               {formatPrice(item.price * item.qty)}
             </div>
           </div>

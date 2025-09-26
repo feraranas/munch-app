@@ -14,7 +14,6 @@ const PaymentButton: React.FC<PaymentButtonProps> = ({
   onPayment
 }) => {
   const isDisabled = myTotal <= 0 || paymentProcessing;
-  const backgroundColor = myTotal > 0 ? '#007bff' : '#6c757d';
   
   const getButtonText = () => {
     if (paymentProcessing) return '⏳ Procesando...';
@@ -27,18 +26,11 @@ const PaymentButton: React.FC<PaymentButtonProps> = ({
     <button
       onClick={onPayment}
       disabled={isDisabled}
-      style={{
-        width: '100%',
-        padding: '12px',
-        backgroundColor,
-        color: 'white',
-        border: 'none',
-        borderRadius: '6px',
-        fontSize: '16px',
-        fontWeight: '500',
-        cursor: myTotal > 0 ? 'pointer' : 'not-allowed',
-        transition: 'background-color 0.2s ease'
-      }}
+      className={`w-full py-3 px-4 text-white border-none rounded-md text-base font-medium transition-colors duration-200 ${
+        myTotal > 0 
+          ? 'bg-blue-600 hover:bg-blue-700 cursor-pointer' 
+          : 'bg-gray-500 cursor-not-allowed'
+      } ${isDisabled ? 'opacity-60' : ''}`}
     >
       {getButtonText()}
     </button>

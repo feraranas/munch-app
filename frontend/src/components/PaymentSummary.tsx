@@ -21,25 +21,10 @@ const PaymentSummary: React.FC<PaymentSummaryProps> = ({
   onPayment
 }) => {
   return (
-    <div style={{
-      backgroundColor: '#f8f9fa',
-      border: '1px solid #dee2e6',
-      borderRadius: '8px',
-      padding: '15px',
-      marginBottom: '20px'
-    }}>
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        marginBottom: '10px'
-      }}>
-        <span style={{ fontSize: '16px', fontWeight: '500' }}>Tu total seleccionado:</span>
-        <span style={{ 
-          fontSize: '18px', 
-          fontWeight: 'bold',
-          color: myTotal > 0 ? '#007bff' : '#6c757d'
-        }}>
+    <div className="bg-gray-50 border border-gray-300 rounded-lg p-4 mb-5">
+      <div className="flex justify-between items-center mb-3">
+        <span className="text-base font-medium">Tu total seleccionado:</span>
+        <span className={`text-lg font-bold ${myTotal > 0 ? 'text-blue-600' : 'text-gray-500'}`}>
           {formatPrice(myTotal)}
         </span>
       </div>

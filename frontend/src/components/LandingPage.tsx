@@ -9,11 +9,11 @@ const LandingPage: React.FC = () => {
         <h1>Bienvenido a Las Gaoneras</h1>
         <p>Paga tu cuenta!</p>
         
-        <div style={{ textAlign: 'center', marginTop: '30px' }}>
+        <div className="text-center mt-8">
           <h2>🍽️</h2>
           <p>Para ver tu cuenta, escanea el QR de tu mesa.</p>
-          <p style={{ color: '#6c757d', fontSize: '14px' }}>
-            Personal: <strong><a href="/admin">/admin</a></strong> (dashboard) • <strong><a href="/admin/pos">/admin/pos</a></strong> (órdenes) • <strong><a href="/admin/qr">/admin/qr</a></strong> (generar QR)
+          <p className="text-gray-500 text-sm">
+            Personal: <strong><a href="/admin" className="text-blue-600 hover:text-blue-800">/admin</a></strong> (dashboard) • <strong><a href="/admin/pos" className="text-blue-600 hover:text-blue-800">/admin/pos</a></strong> (órdenes) • <strong><a href="/admin/qr" className="text-blue-600 hover:text-blue-800">/admin/qr</a></strong> (generar QR)
           </p>
         </div>
       </div>
