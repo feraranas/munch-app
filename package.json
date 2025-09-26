@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "motion": "^12.23.21",
+    "react-modal-sheet": "^5.1.2"
+  }
+}

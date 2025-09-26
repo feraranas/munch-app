@@ -18,6 +18,16 @@ This is the foundation iteration that includes:
 - Go 1.21+
 - Make (optional)
 
+### Environment Setup
+
+**First, set up environment variables:**
+```bash
+# Run the setup script to create .env files
+./setup-env.sh
+```
+
+This creates the necessary environment files for both frontend and backend with the correct ports (8081 for backend, 3001 for frontend).
+
 ### Run script to test repository health
 
 ```bash
@@ -35,7 +45,7 @@ make run
 go run .
 ```
 
-The backend will start on `http://localhost:8080`
+The backend will start on `http://localhost:8081`
 
 ### Frontend Setup
 
@@ -45,13 +55,13 @@ npm install
 npm start
 ```
 
-The frontend will start on `http://localhost:3000`
+The frontend will start on `http://localhost:3001`
 
 ## Usage
 
-1. **Generate QR Code**: Visit `http://localhost:3000/admin/qr` to generate a test QR code
-2. **View Check**: Scan the QR code or visit `http://localhost:3000/check/ORDER-ID` 
-3. **Landing Page**: The main page at `http://localhost:3000/` explains the app
+1. **Generate QR Code**: Visit `http://localhost:3001/admin/qr` to generate a test QR code
+2. **View Check**: Scan the QR code or visit `http://localhost:3001/check/ORDER-ID` 
+3. **Landing Page**: The main page at `http://localhost:3001/` explains the app
 
 ## API Endpoints
 
