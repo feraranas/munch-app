@@ -43,7 +43,6 @@ const CheckView: React.FC = () => {
   // const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
-  const [showPaymentModal, setShowPaymentModal] = useState<boolean>(false);
   const [paymentProcessing, setPaymentProcessing] = useState<boolean>(false);
   const [totalPaid, setTotalPaid] = useState<number>(0);
   
@@ -167,19 +166,21 @@ const CheckView: React.FC = () => {
       .reduce((total, item) => total + (item.price * item.qty), 0);
   };
 
-  const calculateRemainingBalance = () => {
-    if (!qrSession?.order?.total) return 0;
-    return qrSession.order.total - (totalPaid + totalPaidByGroup);
-  };
+  // const calculateRemainingBalance = () => {
+  //   if (!qrSession?.order?.total) return 0;
+  //   return qrSession.order.total - (totalPaid + totalPaidByGroup);
+  // };
 
-  const handlePayment = () => {
-    const myTotal = calculateMyTotal();
-    if (myTotal <= 0) {
-      alert('Selecciona al menos un item para pagar');
-      return;
-    }
-    setShowPaymentModal(true);
-  };
+  // const handlePayment = () => {
+  //   const myTotal = calculateMyTotal();
+  //   if (myTotal <= 0) {
+  //     alert('Selecciona al menos un item para pagar');
+  //     return;
+  //   }
+  //   setShowPaymentModal(true);
+  // };
+
+  const handleCancelPayment = () => {}
 
   const confirmPayment = async () => {
     setPaymentProcessing(true);
@@ -200,7 +201,7 @@ const CheckView: React.FC = () => {
     setSelectedItems(new Set());
     
     setPaymentProcessing(false);
-    setShowPaymentModal(false);
+    // setShowPaymentModal(false);
     
     alert('¡Pago confirmado! Gracias por tu pago.');
   };
@@ -349,75 +350,17 @@ const CheckView: React.FC = () => {
           </div>
         )}
         
-        {/* Mock Stripe Payment Modal */}
-        {showPaymentModal && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-[1000]">
-            <div className="bg-white rounded-xl p-6 max-w-md w-[90%] shadow-2xl">
-              <div className="text-center mb-5">
-                <h3 className="m-0 mb-2 text-gray-800">💳 Pago con Stripe</h3>
-                <p className="m-0 text-gray-500 text-sm">
-                  Pago simulado - No se procesará dinero real
-                </p>
-              </div>
-              
-              <div className="bg-gray-50 border border-gray-300 rounded-lg p-4 mb-5">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-base">Total a pagar:</span>
-                  <span className="text-xl font-bold text-blue-600">
-                    {formatPrice(calculateMyTotal())}
-                  </span>
-                </div>
-                <div className="text-sm text-gray-500">
-                  {selectedItems.size} item{selectedItems.size !== 1 ? 's' : ''} seleccionado{selectedItems.size !== 1 ? 's' : ''}
-                </div>
-              </div>
-              
-              {/* Mock Credit Card Form */}
-              <div className="mb-5">
-                <div className="border border-gray-300 rounded-lg p-3 bg-gray-50 text-sm text-gray-500">
-                  <div className="mb-2">
-                    💳 **** **** **** 4242 (Mock Stripe Card)
-                  </div>
-                  <div>
-                    🔒 Pago seguro simulado
-                  </div>
-                </div>
-              </div>
-              
-              {/* Show Payment Modal */}
-              <div className="flex gap-3">
-                <button
-                  onClick={() => setShowPaymentModal(false)}
-                  disabled={paymentProcessing}
-                  className={`flex-1 py-3 px-4 bg-gray-500 text-white border-none rounded-md text-base transition-colors duration-200 ${
-                    paymentProcessing ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:bg-gray-600'
-                  }`}
-                >
-                  Cancelar
-                </button>
-                <button
-                  onClick={confirmPayment}
-                  disabled={paymentProcessing}
-                  className={`flex-[2] py-3 px-4 bg-green-600 text-white border-none rounded-md text-base font-medium transition-colors duration-200 ${
-                    paymentProcessing ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:bg-green-700'
-                  }`}
-                >
-                  {paymentProcessing ? '⏳ Procesando...' : '✅ Confirmar Pago'}
-                </button>
-              </div>
-
-            </div>
-          </div>
-        )}
 
         <ModalSheet  
           myTotal={calculateMyTotal()}
-          totalPaidByGroup={totalPaidByGroup}
-          totalPaid={totalPaid}
-          remainingBalance={calculateRemainingBalance()}
+          // totalPaidByGroup={totalPaidByGroup}
+          // totalPaid={totalPaid}
+          // remainingBalance={calculateRemainingBalance()}
           paymentProcessing={paymentProcessing}
+          selectedItemsCount={selectedItems.size}
           formatPrice={formatPrice}
-          onPayment={handlePayment}
+          onPayment={confirmPayment}
+          onCancelPayment={handleCancelPayment}
         />
       </div>
     </div>
