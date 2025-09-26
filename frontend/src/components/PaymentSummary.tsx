@@ -44,7 +44,7 @@ const PaymentSummary: React.FC<PaymentSummaryProps> = ({
         </span>
       </div>
       
-      <div style={{
+      {/* <div style={{
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
@@ -56,9 +56,9 @@ const PaymentSummary: React.FC<PaymentSummaryProps> = ({
         <span style={{ fontSize: '16px', fontWeight: '500', color: '#28a745' }}>
           {formatPrice(totalPaid + totalPaidByGroup)}
         </span>
-      </div>
+      </div> */}
       
-      <div style={{
+      {/* <div style={{
         display: 'flex',
         justifyContent: 'space-between',
         alignItems: 'center',
@@ -72,7 +72,7 @@ const PaymentSummary: React.FC<PaymentSummaryProps> = ({
         }}>
           {formatPrice(remainingBalance)}
         </span>
-      </div>
+      </div> */}
       
       <PaymentButton
         myTotal={myTotal}

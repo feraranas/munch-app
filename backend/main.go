@@ -1,9 +1,12 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
 	"os"
+
+	"munch-app-backend/config"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -17,6 +20,7 @@ type App struct {
 	DB     *gorm.DB
 	Router *gin.Engine
 	Hub    *Hub
+	Config *config.Config
 }
 
 type QRSession struct {
@@ -47,6 +51,9 @@ func main() {
 
 	app := &App{}
 
+	// Load configuration
+	app.Config = config.LoadConfig()
+
 	// Initialize database
 	if err := app.initDB(); err != nil {
 		log.Fatal("Failed to initialize database:", err)
@@ -59,8 +66,8 @@ func main() {
 	// Initialize router
 	app.initRouter()
 
-	log.Println("Server starting on :8080")
-	log.Fatal(http.ListenAndServe(":8080", app.Router))
+	log.Printf("Server starting on :%d", app.Config.APIPort)
+	log.Fatal(http.ListenAndServe(fmt.Sprintf(":%d", app.Config.APIPort), app.Router))
 }
 
 func (app *App) initDB() error {
@@ -81,11 +88,12 @@ func (app *App) initRouter() {
 	app.Router.Use(gingin.Middleware("backend"))
 
 	// Enable CORS for frontend
-	config := cors.DefaultConfig()
-	config.AllowOrigins = []string{"http://localhost:3000"}
-	config.AllowMethods = []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}
-	config.AllowHeaders = []string{"Origin", "Content-Type", "Accept", "Authorization"}
-	app.Router.Use(cors.New(config))
+	corsConfig := cors.DefaultConfig()
+	corsConfig.AllowOrigins = app.Config.GetAllowedOrigins()
+	corsConfig.AllowMethods = []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}
+	corsConfig.AllowHeaders = []string{"Origin", "Content-Type", "Accept", "Authorization"}
+	corsConfig.AllowCredentials = true
+	app.Router.Use(cors.New(corsConfig))
 
 	// Routes
 	api := app.Router.Group("/api")

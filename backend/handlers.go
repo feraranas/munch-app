@@ -77,7 +77,7 @@ func (app *App) createQRSession(c *gin.Context) {
 	qrID := uuid.New().String()
 
 	// Create the check URL using QR-ID
-	checkURL := fmt.Sprintf("http://localhost:3000/check/%s", qrID)
+	checkURL := app.Config.GetCheckURL(qrID)
 
 	// Generate QR code
 	qrCode, err := qrcode.Encode(checkURL, qrcode.Medium, 256)

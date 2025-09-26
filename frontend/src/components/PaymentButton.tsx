@@ -19,7 +19,8 @@ const PaymentButton: React.FC<PaymentButtonProps> = ({
   const getButtonText = () => {
     if (paymentProcessing) return '⏳ Procesando...';
     if (myTotal > 0) return `💳 Pagar ${formatPrice(myTotal)}`;
-    return '📱 Selecciona items para pagar';
+    // return '📱 Selecciona items para pagar';
+    return 'Pagar';
   };
 
   return (
