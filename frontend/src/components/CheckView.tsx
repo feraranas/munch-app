@@ -3,8 +3,9 @@ import { useParams } from 'react-router-dom';
 import * as Sentry from '@sentry/react';
 import { useWebSocket } from '../hooks/useWebSocket';
 import CollaborativeUsers from './MockProfile';
-import PaymentSummary from './PaymentSummary';
 import OrderItemsList from './OrderItemsList';
+import ModalSheet from './ModalSheet';
+import { api } from '../config/environment';
 
 interface RouteParams {
   orderId: string; // This is actually the QR-ID now
@@ -64,7 +65,7 @@ const CheckView: React.FC = () => {
         setPolling(true);
       }
       
-      const response = await fetch(`http://localhost:8080/api/qr/${orderId}`);
+      const response = await fetch(api.qr(orderId));
       
       if (!response.ok) {
         throw new Error(`QR session not found: ${response.statusText}`);
@@ -356,16 +357,6 @@ const CheckView: React.FC = () => {
                 <span>{formatPrice(qrSession.order.total)}</span>
               </div>
               
-              {/* Payment Summary Section */}
-              <PaymentSummary
-                myTotal={calculateMyTotal()}
-                totalPaidByGroup={totalPaidByGroup}
-                totalPaid={totalPaid}
-                remainingBalance={calculateRemainingBalance()}
-                paymentProcessing={paymentProcessing}
-                formatPrice={formatPrice}
-                onPayment={handlePayment}
-              />
             </div>
             
             {/* <div style={{ 
@@ -480,6 +471,7 @@ const CheckView: React.FC = () => {
                 </div>
               </div>
               
+              {/* Show Payment Modal */}
               <div style={{
                 display: 'flex',
                 gap: '12px'
@@ -520,9 +512,20 @@ const CheckView: React.FC = () => {
                   {paymentProcessing ? '⏳ Procesando...' : '✅ Confirmar Pago'}
                 </button>
               </div>
+
             </div>
           </div>
         )}
+
+        <ModalSheet  
+          myTotal={calculateMyTotal()}
+          totalPaidByGroup={totalPaidByGroup}
+          totalPaid={totalPaid}
+          remainingBalance={calculateRemainingBalance()}
+          paymentProcessing={paymentProcessing}
+          formatPrice={formatPrice}
+          onPayment={handlePayment}
+        />
       </div>
     </div>
   );
