@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import * as Sentry from '@sentry/react';
+import { api } from '../config/environment';
 
 interface OrderItem {
   id: string;
@@ -47,7 +48,7 @@ const AdminDashboard: React.FC = () => {
 
   const fetchSessions = async () => {
     try {
-      const response = await fetch('http://localhost:8080/api/admin/sessions');
+      const response = await fetch(api.adminSessions());
       
       if (!response.ok) {
         throw new Error(`Failed to fetch sessions: ${response.statusText}`);

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { api } from "../config/environment";
 
 interface UseWebSocketProps {
   qrSessionId: string;
@@ -38,7 +39,7 @@ export const useWebSocket = ({ qrSessionId }: UseWebSocketProps) => {
       return;
     }
 
-    const wsUrl = `ws://localhost:8080/ws/session`;
+    const wsUrl = api.wsSession();
     const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
 
