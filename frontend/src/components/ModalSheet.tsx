@@ -2,15 +2,18 @@ import { Sheet } from 'react-modal-sheet';
 import { useState } from 'react';
 import { ModalHeader } from './ModalHeader';
 import PaymentSummary from './PaymentSummary';
+import PaymentForm from './PaymentForm';
 
 interface ModalSheetProps {
   myTotal: number;
-  totalPaidByGroup: number;
-  totalPaid: number;
-  remainingBalance: number;
+  totalPaidByGroup?: number;
+  totalPaid?: number;
+  remainingBalance?: number;
   paymentProcessing: boolean;
+  selectedItemsCount: number;
   formatPrice: (price: number) => string;
   onPayment: () => void;
+  onCancelPayment: () => void;
 }
 
 function ModalSheet({ 
@@ -19,8 +22,10 @@ function ModalSheet({
   totalPaid, 
   remainingBalance, 
   paymentProcessing, 
+  selectedItemsCount,
   formatPrice, 
-  onPayment 
+  onPayment,
+  onCancelPayment 
 }: ModalSheetProps) {
   const [isOpen, setOpen] = useState(false);
   const onClickExpandModalCTA = () => setOpen(true);  
@@ -52,18 +57,26 @@ function ModalSheet({
         onClose={onClickCloseModalCTA}
         // modalEffectRootId="root"
       >
-        <Sheet.Container style={{ backgroundColor: "#222", maxWidth: "680px" }}>
+        <Sheet.Container style={{ backgroundColor: "#f7e5e5", maxWidth: "680px" }}>
           <Sheet.Header />
             {/* <Sheet.DragIndicator /> */}
           <Sheet.Content>
             <PaymentSummary
               myTotal={myTotal}
-              totalPaidByGroup={totalPaidByGroup}
-              totalPaid={totalPaid}
-              remainingBalance={remainingBalance}
+              // totalPaidByGroup={totalPaidByGroup ?? 0}
+              // totalPaid={totalPaid ?? 0}
+              // remainingBalance={remainingBalance ?? 0}
               paymentProcessing={paymentProcessing}
               formatPrice={formatPrice}
               onPayment={onPayment}
+            />
+            <PaymentForm
+              myTotal={myTotal}
+              selectedItemsCount={selectedItemsCount}
+              paymentProcessing={paymentProcessing}
+              formatPrice={formatPrice}
+              onConfirmPayment={onPayment}
+              onCancel={onCancelPayment}
             />
           </Sheet.Content>
         </Sheet.Container>

@@ -3,9 +3,9 @@ import PaymentButton from './PaymentButton';
 
 interface PaymentSummaryProps {
   myTotal: number;
-  totalPaidByGroup: number;
-  totalPaid: number;
-  remainingBalance: number;
+  totalPaidByGroup?: number;
+  totalPaid?: number;
+  remainingBalance?: number;
   paymentProcessing: boolean;
   formatPrice: (price: number) => string;
   onPayment: () => void;
