@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import * as Sentry from '@sentry/react';
 import { useWebSocket } from '../hooks/useWebSocket';
-import CollaborativeUsers from './MockProfile';
+import CollaborativeUsers from './UserProfile';
 import OrderItemsList from './OrderItemsList';
 import ModalSheet from './ModalSheet';
 import { api } from '../config/environment';
@@ -45,16 +45,16 @@ const CheckView: React.FC = () => {
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [paymentProcessing, setPaymentProcessing] = useState<boolean>(false);
   const [totalPaid, setTotalPaid] = useState<number>(0);
-  
+
   // Initialize WebSocket connection for this QR session
   const { isConnected,
-          connectionError, 
-          connectedUsers,
-          itemSelections,
-          totalPaidByGroup,
-          sendItemSelection,
-          sendPaymentConfirmation 
-        } = useWebSocket({ qrSessionId: orderId || '' });
+    connectionError,
+    connectedUsers,
+    itemSelections,
+    totalPaidByGroup,
+    sendItemSelection,
+    sendPaymentConfirmation
+  } = useWebSocket({ qrSessionId: orderId || '' });
 
   const fetchQRSession = useCallback(async (isPolling = false) => {
     try {
@@ -63,13 +63,13 @@ const CheckView: React.FC = () => {
       } else {
         setPolling(true);
       }
-      
+
       const response = await fetch(api.qr(orderId));
-      
+
       if (!response.ok) {
         throw new Error(`QR session not found: ${response.statusText}`);
       }
-      
+
       const sessionData = await response.json();
       setQRSession(sessionData);
       // setLastUpdated(new Date());
@@ -160,7 +160,7 @@ const CheckView: React.FC = () => {
 
   const calculateMyTotal = () => {
     if (!qrSession?.order?.items) return 0;
-    
+
     return qrSession.order.items
       .filter(item => selectedItems.has(item.id))
       .reduce((total, item) => total + (item.price * item.qty), 0);
@@ -180,29 +180,29 @@ const CheckView: React.FC = () => {
   //   setShowPaymentModal(true);
   // };
 
-  const handleCancelPayment = () => {}
+  const handleCancelPayment = () => { }
 
   const confirmPayment = async () => {
     setPaymentProcessing(true);
     const myTotal = calculateMyTotal();
-    
+
     // Mock Stripe payment delay
     await new Promise(resolve => setTimeout(resolve, 2000));
-    
+
     // Update local total paid
     setTotalPaid(prev => prev + myTotal);
-    
+
     // Send WebSocket message to broadcast payment to all users
     sendPaymentConfirmation(myTotal);
-    
+
     // TODO: Make the items have a visual cue about them being paid
     // (Or make them disappear?)
     // Clear selected items after payment
     setSelectedItems(new Set());
-    
+
     setPaymentProcessing(false);
     // setShowPaymentModal(false);
-    
+
     alert('¡Pago confirmado! Gracias por tu pago.');
   };
 
@@ -211,45 +211,52 @@ const CheckView: React.FC = () => {
       const newSelection = new Set(prev);
       const isCurrentlySelected = newSelection.has(itemId);
       const willBeSelected = !isCurrentlySelected;
-      
+
       if (isCurrentlySelected) {
         newSelection.delete(itemId);
       } else {
         newSelection.add(itemId);
       }
-      
+
       // Send WebSocket message to notify other users
       sendItemSelection(itemId, willBeSelected);
-      
+
       return newSelection;
     });
   };
 
   return (
     <div className="container">
-      <div className="card">
+      <div className="">
         {/* <h2>🍽️ Tu Cuenta - Las Gaoneras</h2> */}
         {/* <p><strong>QR ID:</strong> {orderId}</p> */}
-        {/* {qrSession?.table_number && (
-          <p><strong>Mesa:</strong> {qrSession.table_number}</p>
-        )} */}
-        
+
         {/* Collaborative Users Component - shows all connected users */}
         {orderId && (
-          <CollaborativeUsers 
-            qrSessionId={orderId} 
+          <CollaborativeUsers
+            qrSessionId={orderId}
             isConnected={isConnected}
             connectedUsers={connectedUsers}
           />
         )}
-        
+
+        {qrSession?.table_number && (
+          qrSession.table_number
+        )}
+        {qrSession && qrSession.order && (
+          <div className="flex justify-between items-center text-lg font-bold text-gray-800 mb-4">
+            <span>Total de la cuenta:</span>
+            <span>{formatPrice(qrSession.order.total)}</span>
+          </div>
+        )}
+
         {/* WebSocket connection error */}
         {connectionError && (
           <div className="p-3 bg-red-100 border border-red-300 rounded-md text-red-800 text-sm mb-4">
             ⚠️ Error de conexión: {connectionError}
           </div>
         )}
-        
+
         {/* Real-time status indicator */}
         {/* <div style={{ 
           display: 'flex', 
@@ -278,7 +285,7 @@ const CheckView: React.FC = () => {
             </span>
           )}
         </div> */}
-        
+
         {qrSession && !qrSession.has_order && (
           <div className="mt-5 p-5 bg-yellow-100 border border-yellow-300 rounded-lg text-center">
             <h3>⏳ Esperando Orden</h3>
@@ -289,15 +296,14 @@ const CheckView: React.FC = () => {
             <button
               onClick={() => fetchQRSession(false)}
               disabled={polling}
-              className={`mt-3 py-2 px-4 bg-blue-600 text-white border-none rounded-md text-sm transition-colors duration-200 ${
-                polling ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:bg-blue-700'
-              }`}
+              className={`mt-3 py-2 px-4 bg-blue-600 text-white border-none rounded-md text-sm transition-colors duration-200 ${polling ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:bg-blue-700'
+                }`}
             >
               {polling ? 'Actualizando...' : '🔄 Actualizar ahora'}
             </button>
           </div>
         )}
-        
+
         {qrSession && qrSession.has_order && qrSession.order && (
           <div className="mt-5">
             <OrderItemsList
@@ -308,14 +314,7 @@ const CheckView: React.FC = () => {
               onItemSelection={handleItemSelection}
               formatPrice={formatPrice}
             />
-            
-            <div className="border-t-2 border-gray-200 pt-4 mt-5">
-              <div className="flex justify-between items-center text-lg font-bold text-gray-800 mb-4">
-                <span>Total de la cuenta:</span>
-                <span>{formatPrice(qrSession.order.total)}</span>
-              </div>
-            </div>
-            
+
             {/* <div style={{ 
               marginTop: '20px', 
               padding: '15px', 
@@ -349,9 +348,9 @@ const CheckView: React.FC = () => {
             </div> */}
           </div>
         )}
-        
 
-        <ModalSheet  
+
+        <ModalSheet
           myTotal={calculateMyTotal()}
           // totalPaidByGroup={totalPaidByGroup}
           // totalPaid={totalPaid}

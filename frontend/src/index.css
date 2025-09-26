@@ -4,7 +4,7 @@
 
 @layer base {
   body {
-    @apply m-0 font-sans antialiased bg-gray-100;
+    @apply m-0 font-sans antialiased;
   }
 
   code {
@@ -61,6 +61,7 @@
 
   .mini-player {
     @apply fixed bottom-0 left-0 right-0 w-full flex justify-center;
+    padding-bottom: max(8px, env(safe-area-inset-bottom));
   }
 
   .pay-button {
