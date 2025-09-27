@@ -5,6 +5,7 @@ import CheckView from './components/CheckView';
 import QRGenerator from './components/QRGenerator';
 import WaitstaffMenu from './components/WaitstaffMenu';
 import AdminDashboard from './components/AdminDashboard';
+import BottomNavBar from './components/BottomNavBar';
 import * as Sentry from "@sentry/react";
 
 // Root layout component
@@ -12,6 +13,8 @@ const RootLayout: React.FC = () => {
   return (
     <div className="App">
       <Outlet />
+      {/* {userPermissions?.showNavigation && <BottomNavBar />} */}
+      <BottomNavBar />
     </div>
   );
 };

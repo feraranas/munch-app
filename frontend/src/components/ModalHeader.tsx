@@ -13,10 +13,10 @@ export function ModalHeader({
     return (
         <>
             {!isPlayerOpen && (
-                <div className="mini-player 
+                <div className=" fixed bottom-16 left-0 right-0
                                  flex justify-center items-center 
                                  px-6 py-3 
-                                 mb-2
+                                 z-10
                                  ">
                     <div className="flex justify-between items-center 
                                     px-4 py-3 bg-white shadow-lg 

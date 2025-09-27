@@ -58,12 +58,7 @@
   .image-wrapper {
     @apply w-40 h-40;
   }
-
-  .mini-player {
-    @apply fixed bottom-0 left-0 right-0 w-full flex justify-center;
-    padding-bottom: max(8px, env(safe-area-inset-bottom));
-  }
-
+  
   .pay-button {
     @apply max-w-[180px] outline-none border-none w-full flex items-center justify-between px-4 py-2 text-white bg-gray-800 shadow-lg active:bg-gray-700;
     padding-bottom: max(8px, env(safe-area-inset-bottom));
