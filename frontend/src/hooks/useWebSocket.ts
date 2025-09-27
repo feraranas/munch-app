@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { api } from "../config/environment";
+import { generateDeviceFingerprint } from "../utils/deviceFingerprint";
 
 interface UseWebSocketProps {
   qrSessionId: string;
@@ -16,6 +17,7 @@ interface WebSocketMessage {
   type: string;
   qr_session?: string;
   user_id?: string;
+  device_fingerprint?: string;
   content?: string;
   users?: User[];
   // Item selection fields
@@ -48,14 +50,17 @@ export const useWebSocket = ({ qrSessionId }: UseWebSocketProps) => {
       setIsConnected(true);
       setConnectionError(null);
 
-      // Send join session message
+      // Send join session message with device fingerprint
       // TODO: Add a check before sending the join_session.
       //   if (wsRef.current?.readyState === WebSocket.OPEN) {}
       // TODO: If initial attempt fails, add a retry mechanism.
+      const deviceFingerprint = generateDeviceFingerprint();
       const joinMessage: WebSocketMessage = {
         type: "join_session",
-        qr_session: qrSessionId
+        qr_session: qrSessionId,
+        device_fingerprint: deviceFingerprint
       };
+      console.log(`Sending join message with device fingerprint: ${deviceFingerprint}`);
       ws.send(JSON.stringify(joinMessage));
     });
 
