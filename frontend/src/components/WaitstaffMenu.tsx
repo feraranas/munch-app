@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import * as Sentry from '@sentry/react';
+import Logo from './Logo';
 
 interface MenuItem {
   id: string;
@@ -210,7 +211,10 @@ const WaitstaffMenu: React.FC = () => {
   return (
     <div className="container">
       <div className="card">
-        <h2>🍽️ Sistema POS - {isModifying ? 'Modificar Orden' : 'Las Gaoneras'}</h2>
+        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '20px' }}>
+          <Logo width={50} height={50} />
+          <h2 style={{ marginLeft: '12px', margin: '0' }}>🍽️ Sistema POS - {isModifying ? 'Modificar Orden' : 'Las Gaoneras'}</h2>
+        </div>
         {isModifying && existingOrder && (
           <div style={{ 
             backgroundColor: '#e3f2fd', 

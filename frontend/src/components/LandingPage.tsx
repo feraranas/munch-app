@@ -1,13 +1,18 @@
 import React from 'react';
 import * as Sentry from '@sentry/react';
 import SentryHelloWorldButtons from './SentryHelloWorld';
+import Logo from './Logo';
 
 const LandingPage: React.FC = () => {
   return (
     <div className="container">
       <div className="card">
-        <h1>Bienvenido a Las Gaoneras</h1>
-        <p>Paga tu cuenta!</p>
+        <div className="flex items-center justify-center mb-6">
+          <Logo width={80} height={80} className="mr-4" />
+          <div>
+            <p className="text-gray-600">Paga tu cuenta!</p>
+          </div>
+        </div>
         
         <div className="text-center mt-8">
           <h2>🍽️</h2>

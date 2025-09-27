@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import * as Sentry from '@sentry/react';
+import Logo from './Logo';
 interface QRResponse {
   qrCodeUrl: string;
   qrId: string;
@@ -39,7 +40,10 @@ const QRGenerator: React.FC = () => {
   return (
     <div className="container">
       <div className="card">
-        <h2>🖼️ Generador de QR Permanente</h2>
+        <div style={{ display: 'flex', alignItems: 'center', marginBottom: '20px' }}>
+          <Logo width={50} height={50} />
+          <h2 style={{ marginLeft: '12px', margin: '0' }}>🖼️ Generador de QR Permanente</h2>
+        </div>
         <p>Crea códigos QR permanentes para mesas del restaurante.</p>
         
         <div style={{ marginBottom: '20px' }}>
