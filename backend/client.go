@@ -44,11 +44,12 @@ var upgrader = websocket.Upgrader{
 
 // Message represents the structure of WebSocket messages
 type Message struct {
-	Type      string `json:"type"`
-	QRSession string `json:"qr_session,omitempty"`
-	UserID    string `json:"user_id,omitempty"`
-	Content   string `json:"content,omitempty"`
-	Users     []User `json:"users,omitempty"`
+	Type              string `json:"type"`
+	QRSession         string `json:"qr_session,omitempty"`
+	UserID            string `json:"user_id,omitempty"`
+	DeviceFingerprint string `json:"device_fingerprint,omitempty"`
+	Content           string `json:"content,omitempty"`
+	Users             []User `json:"users,omitempty"`
 	// Item selection fields
 	ItemID   string `json:"item_id,omitempty"`
 	Selected bool   `json:"selected,omitempty"`
@@ -60,7 +61,6 @@ type Message struct {
 type User struct {
 	ID        string `json:"id"`
 	QRSession string `json:"qr_session"`
-	Avatar    string `json:"avatar"`
 	JoinedAt  int64  `json:"joined_at"`
 }
 
@@ -113,9 +113,15 @@ func (app *App) webSocketHandler(c *gin.Context) {
 		return
 	}
 
-	// Generate user ID and avatar
-	userID := generateUserID()
-	avatar := generateAvatar(userID)
+	// Generate user ID - use device fingerprint if provided, otherwise fall back to random
+	var userID string
+	if initMsg.DeviceFingerprint != "" {
+		userID = generateDeterministicUserID(initMsg.DeviceFingerprint, initMsg.QRSession)
+		log.Printf("Generated deterministic user ID %s from fingerprint for session %s", userID, initMsg.QRSession)
+	} else {
+		userID = generateUserID()
+		log.Printf("Generated random user ID %s for session %s", userID, initMsg.QRSession)
+	}
 
 	client := &Client{
 		hub:  app.Hub,
@@ -124,7 +130,6 @@ func (app *App) webSocketHandler(c *gin.Context) {
 		user: User{
 			ID:        userID,
 			QRSession: initMsg.QRSession,
-			Avatar:    avatar,
 			JoinedAt:  time.Now().Unix(),
 		},
 	}
@@ -319,13 +324,22 @@ func generateUserID() string {
 	return hex.EncodeToString(bytes)
 }
 
-// generateAvatar creates a simple avatar identifier
-func generateAvatar(userID string) string {
-	// Simple avatar based on user ID hash
+// generateDeterministicUserID creates a deterministic user ID based on device fingerprint and QR session
+func generateDeterministicUserID(deviceFingerprint, qrSession string) string {
+	// Combine device fingerprint with QR session for uniqueness across sessions
+	combined := deviceFingerprint + "_" + qrSession
+
+	// Create a simple hash
 	hash := 0
-	for _, char := range userID {
+	for _, char := range combined {
 		hash = int(char) + ((hash << 5) - hash)
 	}
-	avatarNum := (hash % 10) + 1
-	return fmt.Sprintf("avatar_%d", avatarNum)
+
+	// Convert to positive hex string and ensure 8 characters
+	hashStr := fmt.Sprintf("%08x", uint32(hash))
+	if len(hashStr) > 8 {
+		hashStr = hashStr[:8]
+	}
+
+	return hashStr
 }
