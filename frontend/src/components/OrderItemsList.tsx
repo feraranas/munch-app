@@ -35,57 +35,49 @@ const OrderItemsList: React.FC<OrderItemsListProps> = React.memo(({
         const isSelectedByMe = selectedItems.has(item.id);
         const selectedByUserId = itemSelections.get(item.id);
         const isSelectedByOther = selectedByUserId && !isSelectedByMe;
-        const selectedUser = connectedUsers.find(user => user.id === selectedByUserId);
         
         return (
           <div 
             key={item.id} 
             onClick={() => !isSelectedByOther && onItemSelection(item.id)}
             className={`
-              flex justify-between items-center p-4 my-2 border-2 rounded-lg transition-all duration-200
+              flex justify-between items-center py-3 px-4 my-1 transition-colors duration-200
               ${isSelectedByMe 
-                ? 'border-blue-600 bg-blue-50 shadow-blue-200 shadow-md' 
+                ? 'bg-green-50 border-l-4 border-green-500' 
                 : isSelectedByOther 
-                  ? 'border-red-500 bg-red-50 shadow-red-200 shadow-md opacity-70' 
-                  : 'border-gray-200 bg-white shadow-sm'
+                  ? 'bg-red-50 border-l-4 border-red-400 opacity-70' 
+                  : 'hover:bg-gray-50'
               }
-              ${isSelectedByOther ? 'cursor-not-allowed' : 'cursor-pointer hover:shadow-md'}
+              ${isSelectedByOther ? 'cursor-not-allowed' : 'cursor-pointer'}
             `}
           >
-            <div className="flex-1">
-              <div className={`
-                font-medium mb-1
+            <div className="flex items-center">
+              <span className="text-gray-600 text-sm mr-3 w-4 text-center">
+                {item.qty}
+              </span>
+              <span className={`
+                text-base
                 ${isSelectedByMe 
-                  ? 'text-blue-700' 
+                  ? 'text-gray-900 font-medium' 
                   : isSelectedByOther 
-                    ? 'text-red-800' 
+                    ? 'text-gray-700' 
                     : 'text-gray-900'
                 }
               `}>
-                {isSelectedByMe && '✓ '}
-                {isSelectedByOther && '🔒 '}
                 {item.name}
-              </div>
-              <div className="text-sm text-gray-500">
-                Cantidad: {item.qty}
-                {isSelectedByOther && selectedUser && (
-                  <span className="ml-2 text-red-500 font-medium">
-                    • Seleccionado por {selectedUser.avatar}
-                  </span>
-                )}
-              </div>
+              </span>
             </div>
-            <div className={`
-              font-semibold text-base
+            <span className={`
+              text-base font-medium
               ${isSelectedByMe 
-                ? 'text-blue-700' 
+                ? 'text-gray-900' 
                 : isSelectedByOther 
-                  ? 'text-red-800' 
+                  ? 'text-gray-700' 
                   : 'text-gray-900'
               }
             `}>
               {formatPrice(item.price * item.qty)}
-            </div>
+            </span>
           </div>
         );
       })}

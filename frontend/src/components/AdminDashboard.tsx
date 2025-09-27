@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import * as Sentry from '@sentry/react';
 import { api } from '../config/environment';
+import Logo from './Logo';
 
 interface OrderItem {
   id: string;
@@ -133,7 +134,10 @@ const AdminDashboard: React.FC = () => {
     <div className="container">
       <div className="card">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-          <h2>🏢 Dashboard Administrativo</h2>
+          <div style={{ display: 'flex', alignItems: 'center' }}>
+            <Logo width={50} height={50} />
+            <h2 style={{ marginLeft: '12px', margin: '0 0 0 12px' }}>🏢 Dashboard Administrativo</h2>
+          </div>
           <div style={{ display: 'flex', gap: '10px' }}>
             <a 
               href="/admin/qr"

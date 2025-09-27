@@ -6,7 +6,7 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', 'sans-serif'],
+        sans: ['Open Sans', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', 'sans-serif'],
         mono: ['source-code-pro', 'Menlo', 'Monaco', 'Consolas', 'Courier New', 'monospace'],
       },
       colors: {
@@ -28,6 +28,17 @@ module.exports = {
           700: '#374151',
           800: '#1f2937',
           900: '#111827',
+        },
+        'black': {
+          '50': '#f1f1f1',
+          '100': '#d7d7d7',
+          '200': '#b0b0b0',
+          '300': '#8b8b8b',
+          '400': '#565656',
+          '500': '#2a2a2a',
+          '600': '#1a1a1a',
+          '700': '#131313',
+          '800': '#000000',
         }
       },
       animation: {
