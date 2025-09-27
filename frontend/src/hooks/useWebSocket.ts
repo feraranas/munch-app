@@ -47,7 +47,7 @@ export const useWebSocket = ({ qrSessionId }: UseWebSocketProps) => {
       console.log(`WebSocket connected for QR session: ${qrSessionId}`);
       setIsConnected(true);
       setConnectionError(null);
-      
+
       // Send join session message
       // TODO: Add a check before sending the join_session.
       //   if (wsRef.current?.readyState === WebSocket.OPEN) {}
@@ -63,17 +63,17 @@ export const useWebSocket = ({ qrSessionId }: UseWebSocketProps) => {
       try {
         const message: WebSocketMessage = JSON.parse(e.data);
         console.log(`RECEIVED message for session ${qrSessionId}:`, message);
-      
-      // Handle different message types
-      switch (message.type) {
 
-        case "user_list_update":
-          if (message.users) {
-            setConnectedUsers(message.users);
-            console.log(`Updated user list for session ${qrSessionId}:`, message.users);
-          }
-          break;
-        
+        // Handle different message types
+        switch (message.type) {
+
+          case "user_list_update":
+            if (message.users) {
+              setConnectedUsers(message.users);
+              console.log(`Updated user list for session ${qrSessionId}:`, message.users);
+            }
+            break;
+
           case "item_selection":
             if (message.item_id && message.user_id !== undefined) {
               setItemSelections(prev => {
@@ -88,21 +88,21 @@ export const useWebSocket = ({ qrSessionId }: UseWebSocketProps) => {
               console.log(`User ${message.user_id} ${message.selected ? 'selected' : 'deselected'} item ${message.item_id}`);
             }
             break;
-          
+
           case "payment_confirmed":
             if (message.amount && message.user_id) {
               setTotalPaidByGroup(prev => prev + message.amount!);
               console.log(`User ${message.user_id} confirmed payment of $${message.amount}`);
             }
             break;
-        
-        case "pong":
-          console.log("Received pong");
-          break;
-        
-        default:
-          console.log("Unknown message type:", message.type);
-      }
+
+          case "pong":
+            console.log("Received pong");
+            break;
+
+          default:
+            console.log("Unknown message type:", message.type);
+        }
       } catch (error) {
         console.error("Error parsing WebSocket message:", error);
         console.error("Raw message data:", e.data);
@@ -135,12 +135,12 @@ export const useWebSocket = ({ qrSessionId }: UseWebSocketProps) => {
     return () => {
       console.log(`Cleanup WebSocket on unmount for session: ${qrSessionId}`);
       window.removeEventListener("pagehide", handlePageHide);
-      
+
       // Only close if the WebSocket is in a valid state to be closed
       if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
         ws.close();
       }
-      
+
       // Clear the WebSocket ref
       wsRef.current = null;
     };
@@ -173,10 +173,10 @@ export const useWebSocket = ({ qrSessionId }: UseWebSocketProps) => {
     }
   };
 
-  return { 
-    isConnected, 
-    connectionError, 
-    connectedUsers, 
+  return {
+    isConnected,
+    connectionError,
+    connectedUsers,
     itemSelections,
     totalPaidByGroup,
     sendItemSelection,
