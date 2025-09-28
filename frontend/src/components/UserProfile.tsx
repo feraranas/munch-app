@@ -1,4 +1,5 @@
 import * as React from 'react';
+import SimpleAvatar from './Avatar';
 
 interface User {
   id: string;
@@ -79,18 +80,7 @@ const CollaborativeUsers: React.FC<CollaborativeUsersProps> = ({
     return selectedAsset;
   };
 
-  const SimpleAvatar = ({ bgColor, assetName }: { bgColor: string; assetName: string }) => (
-    <div
-      className="w-10 h-10 rounded-full flex items-center justify-center overflow-hidden"
-      style={{ backgroundColor: bgColor }}
-    >
-      <img 
-        src={`/assets/${assetName}`} 
-        alt="User avatar" 
-        className="w-full h-full object-cover"
-      />
-    </div>
-  );
+  
 
   return (
     <div className="w-full flex justify-center items-center pt-2 pb-2">

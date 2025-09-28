@@ -33,15 +33,17 @@ type MenuSelectionRequest struct {
 }
 
 type SelectedItem struct {
-	ID  string `json:"id"`  // Menu item ID
-	Qty int    `json:"qty"` // Quantity
+	ID     string `json:"id"`     // item ID
+	MenuID string `json:"menuId"` // Specific item ID from selection
+	Qty    int    `json:"qty"`    // Quantity
 }
 
 type OrderItem struct {
-	ID    string  `json:"id"`
-	Name  string  `json:"name"`
-	Price float64 `json:"price"`
-	Qty   int     `json:"qty"`
+	ID     string  `json:"id"`
+	MenuID string  `json:"menuId"`
+	Name   string  `json:"name"`
+	Price  float64 `json:"price"`
+	Qty    int     `json:"qty"`
 }
 
 type MenuItem struct {
@@ -322,13 +324,15 @@ func (app *App) updateOrder(c *gin.Context) {
 				}
 
 				orderItem := OrderItem{
-					ID:    menuItem.ID,
-					Name:  menuItem.Name,
-					Price: menuItem.Price,
-					Qty:   selectedItem.Qty,
+					ID:     menuItem.ID,
+					MenuID: selectedItem.MenuID,
+					Name:   menuItem.Name,
+					Price:  menuItem.Price,
+					Qty:    selectedItem.Qty,
 				}
 				orderItems = append(orderItems, orderItem)
-				total += menuItem.Price * float64(selectedItem.Qty)
+				total += menuItem.Price
+
 				break
 			}
 		}
@@ -375,7 +379,7 @@ func (app *App) updateOrder(c *gin.Context) {
 }
 
 // POS Mock API endpoint - creates order from waitstaff menu selection and links to QR session
-func (app *App) mockPOSOrder(c *gin.Context) {
+func (app *App) POSOrder(c *gin.Context) {
 	var req MenuSelectionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
@@ -401,14 +405,17 @@ func (app *App) mockPOSOrder(c *gin.Context) {
 				if selectedItem.Qty <= 0 {
 					continue // Skip items with invalid quantity
 				}
+
 				orderItem := OrderItem{
-					ID:    menuItem.ID,
-					Name:  menuItem.Name,
-					Price: menuItem.Price,
-					Qty:   selectedItem.Qty,
+					ID:     menuItem.ID,
+					MenuID: selectedItem.MenuID,
+					Name:   menuItem.Name,
+					Price:  menuItem.Price,
+					Qty:    selectedItem.Qty,
 				}
 				orderItems = append(orderItems, orderItem)
-				total += menuItem.Price * float64(selectedItem.Qty)
+				total += menuItem.Price
+
 				break
 			}
 		}

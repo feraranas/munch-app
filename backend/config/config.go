@@ -15,9 +15,9 @@ type Config struct {
 // LoadConfig loads configuration from environment variables with defaults
 func LoadConfig() *Config {
 	config := &Config{
-		APIPort:     8081,
-		FrontendURL: "http://localhost:3001",
-		APIURL:      "http://localhost:8081",
+		APIPort:     8080,
+		FrontendURL: "http://localhost:3000",
+		APIURL:      "http://localhost:8080",
 	}
 
 	// Load from environment variables if they exist

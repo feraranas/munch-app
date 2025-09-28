@@ -103,7 +103,7 @@ func (app *App) initRouter() {
 		api.GET("/orders/:id", app.getOrder)
 		api.POST("/orders", app.createOrder)
 		api.GET("/menu/items", app.getMenuItems)
-		api.POST("/pos/mock-order", app.mockPOSOrder)
+		api.POST("/pos/order", app.POSOrder)
 		api.PUT("/orders/update", app.updateOrder)
 		api.GET("/admin/sessions", app.getAllQRSessions)
 	}

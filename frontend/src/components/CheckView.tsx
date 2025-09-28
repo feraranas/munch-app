@@ -163,7 +163,7 @@ const CheckView: React.FC = () => {
 
     return qrSession.order.items
       .filter(item => selectedItems.has(item.id))
-      .reduce((total, item) => total + (item.price * item.qty), 0);
+      .reduce((total, item) => total + item.price, 0); // Each item has qty=1, so just add the price
   };
 
   // const calculateRemainingBalance = () => {
@@ -305,7 +305,7 @@ const CheckView: React.FC = () => {
         )}
 
         {qrSession && qrSession.has_order && qrSession.order && (
-          <div className="mt-5">
+          <div className="mt-6">
             <OrderItemsList
               items={qrSession.order.items}
               selectedItems={selectedItems}
