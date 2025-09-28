@@ -88,6 +88,7 @@ func (app *App) initDB() error {
 	if err != nil {
 		return fmt.Errorf("failed to connect to database: %w", err)
 	}
+	log.Printf("Connected to database: %v", app.Config.DatabaseURL)
 
 	// Auto migrate the schema
 	return app.DB.AutoMigrate(&QRSession{}, &Order{})

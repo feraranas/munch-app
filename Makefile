@@ -13,6 +13,7 @@ help:
 	@echo "  seed            - Seed database with sample data"
 	@echo "  logs            - Show logs from all services"
 	@echo "  clean           - Stop and remove all containers and volumes"
+	@echo "  fix-permissions - Fix PostgreSQL permissions for munch_user"
 	@echo "  help            - Show this help message"
 
 # Start development with PostgreSQL
@@ -67,7 +68,16 @@ setup-local-db:
 	psql munch_app_dev -c "CREATE USER munch_user WITH PASSWORD 'munch_password';"
 	psql munch_app_dev -c "GRANT ALL PRIVILEGES ON DATABASE munch_app_dev TO munch_user;"
 	psql munch_app_dev -c "GRANT ALL ON SCHEMA public TO munch_user;"
+	psql munch_app_dev -c "GRANT CREATE ON SCHEMA public TO munch_user;"
+	psql munch_app_dev -c "GRANT USAGE ON SCHEMA public TO munch_user;"
+	psql munch_app_dev -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO munch_user;"
+	psql munch_app_dev -c "ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO munch_user;"
 	@echo "Local PostgreSQL database setup complete!"
+
+# Fix PostgreSQL permissions
+fix-permissions:
+	@echo "Fixing PostgreSQL permissions..."
+	cd backend && ./scripts/fix-postgres-permissions.sh
 
 # Run schema migration on local database
 migrate-local:

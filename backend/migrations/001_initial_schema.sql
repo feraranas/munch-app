@@ -1,6 +1,9 @@
 -- Initial schema for munch_app PostgreSQL database
 -- This recreates the structure from the existing SQLite database
 
+-- Note: Ensure munch_user has CREATE and USAGE permissions on public schema
+-- Run: GRANT CREATE, USAGE ON SCHEMA public TO munch_user;
+
 -- Create QR Sessions table
 CREATE TABLE IF NOT EXISTS qr_sessions (
     id VARCHAR(255) PRIMARY KEY,

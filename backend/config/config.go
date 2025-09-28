@@ -20,8 +20,8 @@ func LoadConfig() *Config {
 		APIPort:      8080,
 		FrontendURL:  "http://localhost:3000",
 		APIURL:       "http://localhost:8080",
-		DatabaseType: "sqlite",       // Default to SQLite for backward compatibility
-		DatabaseURL:  "munch_app.db", // Default SQLite file
+		DatabaseType: "postgres",
+		DatabaseURL:  "postgres://munch_user:munch_password@localhost:5432/munch_app_dev?sslmode=disable",
 	}
 
 	// Load from environment variables if they exist

@@ -46,11 +46,33 @@ psql postgres
 CREATE DATABASE munch_app_dev;
 CREATE USER munch_user WITH PASSWORD 'munch_password';
 GRANT ALL PRIVILEGES ON DATABASE munch_app_dev TO munch_user;
+
+# Connect to the database and grant schema permissions
+\c munch_app_dev
+GRANT CREATE, USAGE ON SCHEMA public TO munch_user;
 GRANT ALL ON SCHEMA public TO munch_user;
 \q
 
 # Method 2: Using Makefile
 make setup-local-db
+```
+
+###Troubleshooting tips
+```bash
+# Check a user exists
+psql -d postgres -c "\du"
+
+# Check what permisions are set
+psql -d postgres -c "\l"
+
+# Check schema-level permissions
+psql -d munch_app_dev -c "\dn+"
+
+# Grant permissions
+psql -d munch_app_dev -c "GRANT CREATE ON SCHEMA public TO munch_user; GRANT USAGE ON SCHEMA public TO munch_user;"
+
+# Stop background process
+pkill -f "go run"
 ```
 
 ### Test Connection
@@ -310,7 +332,17 @@ psql -h localhost -U munch_user -d munch_app_dev
 
 ### Common Issues
 
-1. **PostgreSQL not starting**
+1. **Permission denied for schema public**
+   ```bash
+   # Error: permission denied for schema public
+   # Fix: Grant schema permissions to munch_user
+   psql -d munch_app_dev -c "GRANT CREATE, USAGE ON SCHEMA public TO munch_user;"
+   
+   # Or use the fix script
+   make fix-permissions
+   ```
+
+2. **PostgreSQL not starting**
    ```bash
    # Check if port 5432 is in use
    lsof -i :5432
