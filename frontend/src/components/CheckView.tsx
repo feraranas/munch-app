@@ -305,7 +305,7 @@ const CheckView: React.FC = () => {
         )}
 
         {qrSession && qrSession.has_order && qrSession.order && (
-          <div className="mt-5">
+          <div className="mt-6">
             <OrderItemsList
               items={qrSession.order.items}
               selectedItems={selectedItems}
