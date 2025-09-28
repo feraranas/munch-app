@@ -133,6 +133,7 @@ const WaitstaffMenu: React.FC = () => {
           qrId: qrId.trim(),
           selectedItems: selectedItems.map(item => ({
             id: item.id,
+            menuId: item.menuId,
             qty: item.qty
           }))
         }),

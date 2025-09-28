@@ -33,7 +33,14 @@ const OrderItemsList: React.FC<OrderItemsListProps> = React.memo(({
 }) => {
   return (
     <div className="mb-5">
-      {items.map((item) => {
+      {items.map((item, index) => {
+        // Validate menuId exists - this is critical for data integrity
+        if (!item.menuId) {
+          console.error('🚨 CRITICAL: OrderItem missing menuId - this will break selection and payment tracking:', { item, index });
+          // Don't render items without menuId to prevent data corruption
+          return null;
+        }
+        
         const isSelectedByMe = selectedItems.has(item.menuId);
         const selectedByUserId = itemSelections.get(item.menuId);
         const isSelectedByOther = selectedByUserId && !isSelectedByMe;
