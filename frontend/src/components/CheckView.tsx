@@ -13,6 +13,7 @@ interface RouteParams {
 
 interface OrderItem {
   id: string;
+  menuId: string;
   name: string;
   price: number;
   qty: number;
@@ -71,6 +72,7 @@ const CheckView: React.FC = () => {
       }
 
       const sessionData = await response.json();
+      console.log('qrSessionOrder: ', sessionData)
       setQRSession(sessionData);
       // setLastUpdated(new Date());
       setError(null); // Clear any previous errors
@@ -162,8 +164,15 @@ const CheckView: React.FC = () => {
     if (!qrSession?.order?.items) return 0;
 
     return qrSession.order.items
-      .filter(item => selectedItems.has(item.id))
-      .reduce((total, item) => total + item.price, 0); // Each item has qty=1, so just add the price
+      .filter((item) => {
+        // Validate menuId exists - critical for payment accuracy
+        if (!item.menuId) {
+          console.error('🚨 CRITICAL: calculateMyTotal found OrderItem without menuId - payment calculation will be incorrect:', item);
+          return false; // Exclude items without menuId from payment calculation
+        }
+        return selectedItems.has(item.menuId);
+      })
+      .reduce((total, item) => total + (item.price * item.qty), 0);
   };
 
   // const calculateRemainingBalance = () => {
@@ -206,20 +215,20 @@ const CheckView: React.FC = () => {
     alert('¡Pago confirmado! Gracias por tu pago.');
   };
 
-  const handleItemSelection = (itemId: string) => {
+  const handleItemSelection = (menuId: string) => {
     setSelectedItems(prev => {
       const newSelection = new Set(prev);
-      const isCurrentlySelected = newSelection.has(itemId);
+      const isCurrentlySelected = newSelection.has(menuId);
       const willBeSelected = !isCurrentlySelected;
 
       if (isCurrentlySelected) {
-        newSelection.delete(itemId);
+        newSelection.delete(menuId);
       } else {
-        newSelection.add(itemId);
+        newSelection.add(menuId);
       }
 
       // Send WebSocket message to notify other users
-      sendItemSelection(itemId, willBeSelected);
+      sendItemSelection(menuId, willBeSelected);
 
       return newSelection;
     });
@@ -228,8 +237,6 @@ const CheckView: React.FC = () => {
   return (
     <div className="container">
       <div className="">
-        {/* <h2>🍽️ Tu Cuenta - Las Gaoneras</h2> */}
-        {/* <p><strong>QR ID:</strong> {orderId}</p> */}
 
         {/* Collaborative Users Component - shows all connected users */}
         {orderId && (
@@ -256,35 +263,6 @@ const CheckView: React.FC = () => {
             ⚠️ Error de conexión: {connectionError}
           </div>
         )}
-
-        {/* Real-time status indicator */}
-        {/* <div style={{ 
-          display: 'flex', 
-          justifyContent: 'space-between', 
-          alignItems: 'center',
-          padding: '8px 12px',
-          backgroundColor: polling ? '#fff3cd' : '#d4edda',
-          border: `1px solid ${polling ? '#ffeeba' : '#c3e6cb'}`,
-          borderRadius: '6px',
-          fontSize: '12px',
-          marginBottom: '15px'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <div style={{
-              width: '8px',
-              height: '8px',
-              borderRadius: '50%',
-              backgroundColor: polling ? '#ffc107' : '#28a745',
-              animation: polling ? 'pulse 1s infinite' : 'none'
-            }}></div>
-            <span>{polling ? '🔄 Actualizando...' : '✅ En tiempo real'}</span>
-          </div>
-          {lastUpdated && (
-            <span style={{ color: '#6c757d' }}>
-              Última actualización: {formatLastUpdated()}
-            </span>
-          )}
-        </div> */}
 
         {qrSession && !qrSession.has_order && (
           <div className="mt-5 p-5 bg-yellow-100 border border-yellow-300 rounded-lg text-center">
@@ -314,38 +292,6 @@ const CheckView: React.FC = () => {
               onItemSelection={handleItemSelection}
               formatPrice={formatPrice}
             />
-
-            {/* <div style={{ 
-              marginTop: '20px', 
-              padding: '15px', 
-              backgroundColor: '#f8f9fa', 
-              borderRadius: '8px',
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
-                <p style={{ margin: '0', color: '#6c757d', fontSize: '14px' }}>
-                  💡 Toca en los items para seleccionar lo que ordenaste. Los items bloqueados (🔒) fueron seleccionados por otros usuarios. En las próximas iteraciones podrás pagar tu parte
-                </p>
-                <button
-                  onClick={() => fetchQRSession(false)}
-                  disabled={polling}
-                  style={{
-                    padding: '6px 12px',
-                    backgroundColor: '#007bff',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: polling ? 'not-allowed' : 'pointer',
-                    fontSize: '12px',
-                    opacity: polling ? 0.6 : 1
-                  }}
-                >
-                  {polling ? '⏳' : '🔄'}
-                </button>
-              </div>
-              <p style={{ margin: '0', color: '#6c757d', fontSize: '12px' }}>
-                🔄 Esta orden se actualiza automáticamente cada 3 segundos si el personal hace cambios
-              </p>
-            </div> */}
           </div>
         )}
 

@@ -3,6 +3,7 @@ import CheckMarkIcon from './CheckMarkIcon';
 
 interface OrderItem {
   id: string;
+  menuId: string;
   name: string;
   price: number;
   qty: number;
@@ -18,7 +19,7 @@ interface OrderItemsListProps {
   selectedItems: Set<string>;
   itemSelections: Map<string, string>;
   connectedUsers: ConnectedUser[];
-  onItemSelection: (itemId: string) => void;
+  onItemSelection: (menuId: string) => void;
   formatPrice: (price: number) => string;
 }
 
@@ -32,15 +33,22 @@ const OrderItemsList: React.FC<OrderItemsListProps> = React.memo(({
 }) => {
   return (
     <div className="mb-5">
-      {items.map((item) => {
-        const isSelectedByMe = selectedItems.has(item.id);
-        const selectedByUserId = itemSelections.get(item.id);
+      {items.map((item, index) => {
+        // Validate menuId exists - this is critical for data integrity
+        if (!item.menuId) {
+          console.error('🚨 CRITICAL: OrderItem missing menuId - this will break selection and payment tracking:', { item, index });
+          // Don't render items without menuId to prevent data corruption
+          return null;
+        }
+        
+        const isSelectedByMe = selectedItems.has(item.menuId);
+        const selectedByUserId = itemSelections.get(item.menuId);
         const isSelectedByOther = selectedByUserId && !isSelectedByMe;
         
         return (
           <div 
-            key={item.id} 
-            onClick={() => !isSelectedByOther && onItemSelection(item.id)}
+            key={item.menuId} 
+            onClick={() => !isSelectedByOther && onItemSelection(item.menuId)}
             className={`
               flex justify-between items-center py-3 my-0 transition-colors duration-200
               ${isSelectedByMe 
@@ -87,7 +95,7 @@ const OrderItemsList: React.FC<OrderItemsListProps> = React.memo(({
                     : 'text-gray-900'
                 }
               `}>
-                {formatPrice(item.price)}
+                {formatPrice(item.price * item.qty)}
               </span>
               
               {/* Check Mark Circle - only show if selected by me */}

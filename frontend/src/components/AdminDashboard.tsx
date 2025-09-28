@@ -138,8 +138,9 @@ const AdminDashboard: React.FC = () => {
             <Logo width={50} height={50} />
             <h2 style={{ marginLeft: '12px', margin: '0 0 0 12px' }}>🏢 Dashboard Administrativo</h2>
           </div>
-          <div style={{ display: 'flex', gap: '10px' }}>
-            <a 
+          
+          {/* <div style={{ display: 'flex', gap: '10px' }}>   */}
+            {/* <a 
               href="/admin/qr"
               style={{
                 padding: '8px 16px',
@@ -151,8 +152,9 @@ const AdminDashboard: React.FC = () => {
               }}
             >
               🖼️ Crear QR
-            </a>
-            <a 
+            </a> */}
+            
+            {/* <a
               href="/admin/pos"
               style={{
                 padding: '8px 16px',
@@ -164,8 +166,9 @@ const AdminDashboard: React.FC = () => {
               }}
             >
               🍽️ POS
-            </a>
-            <button
+            </a> */}
+            
+            {/* <button
               onClick={fetchSessions}
               className="btn"
               style={{ 
@@ -176,8 +179,9 @@ const AdminDashboard: React.FC = () => {
               }}
             >
               🔄 Actualizar
-            </button>
-          </div>
+            </button> */}
+
+          {/* </div> */}
         </div>
 
         <div style={{ marginBottom: '20px' }}>
