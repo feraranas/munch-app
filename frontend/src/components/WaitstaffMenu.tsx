@@ -14,10 +14,11 @@ interface MenuResponse {
 }
 
 interface SelectedItem {
-  id: string;
+  id: string; // This will be unique for each item instance
+  menuId: string; // Original menu item ID
   name: string;
   price: number;
-  qty: number;
+  qty: number; // Always 1
 }
 
 const WaitstaffMenu: React.FC = () => {
@@ -47,9 +48,10 @@ const WaitstaffMenu: React.FC = () => {
           // Convert existing order items to selected items format
           const existingItems: SelectedItem[] = data.order.items.map((item: any) => ({
             id: item.id,
+            menuId: item.id.split('_')[0], // Extract original menu ID from unique ID
             name: item.name,
             price: item.price,
-            qty: item.qty
+            qty: 1 // Always 1 per item
           }));
           
           setSelectedItems(existingItems);
@@ -86,21 +88,15 @@ const WaitstaffMenu: React.FC = () => {
 
   const addItem = (menuItem: MenuItem) => {
     setSelectedItems(prev => {
-      const existingIndex = prev.findIndex(item => item.id === menuItem.id);
-      if (existingIndex >= 0) {
-        // Increment quantity if item already exists
-        const updated = [...prev];
-        updated[existingIndex].qty += 1;
-        return updated;
-      } else {
-        // Add new item with quantity 1
-        return [...prev, {
-          id: menuItem.id,
-          name: menuItem.name,
-          price: menuItem.price,
-          qty: 1
-        }];
-      }
+      // Always create a new separate item instance
+      const newItem: SelectedItem = {
+        id: `${menuItem.id}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`, // Unique ID for each instance
+        menuId: menuItem.id, // Original menu item ID
+        name: menuItem.name,
+        price: menuItem.price,
+        qty: 1 // Always 1
+      };
+      return [...prev, newItem];
     });
   };
 
@@ -108,21 +104,7 @@ const WaitstaffMenu: React.FC = () => {
     setSelectedItems(prev => prev.filter(item => item.id !== itemId));
   };
 
-  const updateQuantity = (itemId: string, newQty: number) => {
-    if (newQty <= 0) {
-      removeItem(itemId);
-      return;
-    }
-    
-    setSelectedItems(prev => {
-      const updated = [...prev];
-      const index = updated.findIndex(item => item.id === itemId);
-      if (index >= 0) {
-        updated[index].qty = newQty;
-      }
-      return updated;
-    });
-  };
+  // No longer need updateQuantity since each item is separate with qty=1
 
   const createOrder = async () => {
     if (!qrId.trim()) {
@@ -151,10 +133,19 @@ const WaitstaffMenu: React.FC = () => {
         },
         body: JSON.stringify({ 
           qrId: qrId.trim(), 
-          selectedItems: selectedItems.map(item => ({
-            id: item.id,
-            qty: item.qty
-          }))
+          selectedItems: (() => {
+            // Group items by menuId and count them
+            const grouped = selectedItems.reduce((acc, item) => {
+              const existing = acc.find(g => g.id === item.menuId);
+              if (existing) {
+                existing.qty += 1;
+              } else {
+                acc.push({ id: item.menuId, qty: 1 });
+              }
+              return acc;
+            }, [] as { id: string; qty: number }[]);
+            return grouped;
+          })()
         }),
       });
       
@@ -193,7 +184,7 @@ const WaitstaffMenu: React.FC = () => {
 
   const calculateTotal = () => {
     return selectedItems.reduce((total, item) => {
-      return total + (item.price * item.qty);
+      return total + item.price; // Each item has qty=1, so just add the price
     }, 0);
   };
 
@@ -365,61 +356,8 @@ const WaitstaffMenu: React.FC = () => {
                   </div>
                   
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <button
-                        onClick={() => updateQuantity(item.id, item.qty - 1)}
-                        style={{
-                          width: '30px',
-                          height: '30px',
-                          border: '1px solid #ddd',
-                          backgroundColor: 'white',
-                          borderRadius: '4px',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontSize: '16px'
-                        }}
-                      >
-                        −
-                      </button>
-                      
-                      <input
-                        type="number"
-                        value={item.qty}
-                        onChange={(e) => updateQuantity(item.id, parseInt(e.target.value) || 0)}
-                        style={{
-                          width: '50px',
-                          textAlign: 'center',
-                          border: '1px solid #ddd',
-                          borderRadius: '4px',
-                          padding: '4px',
-                          fontSize: '14px'
-                        }}
-                        min="1"
-                      />
-                      
-                      <button
-                        onClick={() => updateQuantity(item.id, item.qty + 1)}
-                        style={{
-                          width: '30px',
-                          height: '30px',
-                          border: '1px solid #ddd',
-                          backgroundColor: 'white',
-                          borderRadius: '4px',
-                          cursor: 'pointer',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontSize: '16px'
-                        }}
-                      >
-                        +
-                      </button>
-                    </div>
-                    
                     <div style={{ minWidth: '80px', textAlign: 'right', fontWeight: '600' }}>
-                      {formatPrice(item.price * item.qty)}
+                      {formatPrice(item.price)}
                     </div>
                     
                     <button
@@ -496,13 +434,13 @@ const WaitstaffMenu: React.FC = () => {
           <ol>
             <li>Ingresa el <strong>QR-ID</strong> de la mesa del cliente</li>
             <li>Usa <strong>"+ Agregar"</strong> para añadir items al pedido</li>
-            <li>Ajusta <strong>cantidades</strong> con los botones +/- o ingresa el número directamente</li>
+            <li>Cada clic en <strong>"+ Agregar"</strong> crea una nueva línea separada del mismo item</li>
             <li><strong>Elimina items</strong> con el botón 🗑️ si el cliente cambia de opinión</li>
             <li>Revisa el total y haz clic en <strong>"Crear Orden"</strong></li>
             <li>El cliente verá la orden <strong>inmediatamente</strong> en su teléfono</li>
           </ol>
           <p style={{ marginTop: '10px', fontSize: '14px', color: '#6c757d' }}>
-            💡 <strong>Tip:</strong> Puedes modificar la orden hasta hacer clic en "Crear Orden"
+            💡 <strong>Tip:</strong> Si necesitas 3 tacos, haz clic 3 veces en "Agregar" para crear 3 líneas separadas
           </p>
         </div>
       </div>

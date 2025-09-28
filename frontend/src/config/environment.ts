@@ -9,9 +9,9 @@ interface AppConfig {
 
 const getConfig = (): AppConfig => {
   // Get environment variables with fallbacks for development
-  const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:8081';
-  const wsUrl = process.env.REACT_APP_WS_URL || 'ws://localhost:8081';
-  const frontendUrl = process.env.REACT_APP_FRONTEND_URL || 'http://localhost:3001';
+  const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:8080';
+  const wsUrl = process.env.REACT_APP_WS_URL || 'ws://localhost:8080';
+  const frontendUrl = process.env.REACT_APP_FRONTEND_URL || 'http://localhost:3000';
 
   return {
     apiUrl,

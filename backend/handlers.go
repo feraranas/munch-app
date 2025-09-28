@@ -321,14 +321,17 @@ func (app *App) updateOrder(c *gin.Context) {
 					continue // Skip items with zero or negative quantity
 				}
 
-				orderItem := OrderItem{
-					ID:    menuItem.ID,
-					Name:  menuItem.Name,
-					Price: menuItem.Price,
-					Qty:   selectedItem.Qty,
+				// Enforce maximum quantity of 1 per item - create separate items for each quantity
+				for i := 0; i < selectedItem.Qty; i++ {
+					orderItem := OrderItem{
+						ID:    fmt.Sprintf("%s_%d", menuItem.ID, len(orderItems)), // Unique ID for each item instance
+						Name:  menuItem.Name,
+						Price: menuItem.Price,
+						Qty:   1, // Always 1 per item
+					}
+					orderItems = append(orderItems, orderItem)
+					total += menuItem.Price
 				}
-				orderItems = append(orderItems, orderItem)
-				total += menuItem.Price * float64(selectedItem.Qty)
 				break
 			}
 		}
@@ -401,14 +404,18 @@ func (app *App) mockPOSOrder(c *gin.Context) {
 				if selectedItem.Qty <= 0 {
 					continue // Skip items with invalid quantity
 				}
-				orderItem := OrderItem{
-					ID:    menuItem.ID,
-					Name:  menuItem.Name,
-					Price: menuItem.Price,
-					Qty:   selectedItem.Qty,
+				
+				// Enforce maximum quantity of 1 per item - create separate items for each quantity
+				for i := 0; i < selectedItem.Qty; i++ {
+					orderItem := OrderItem{
+						ID:    fmt.Sprintf("%s_%d", menuItem.ID, len(orderItems)), // Unique ID for each item instance
+						Name:  menuItem.Name,
+						Price: menuItem.Price,
+						Qty:   1, // Always 1 per item
+					}
+					orderItems = append(orderItems, orderItem)
+					total += menuItem.Price
 				}
-				orderItems = append(orderItems, orderItem)
-				total += menuItem.Price * float64(selectedItem.Qty)
 				break
 			}
 		}

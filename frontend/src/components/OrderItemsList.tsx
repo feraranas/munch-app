@@ -53,15 +53,8 @@ const OrderItemsList: React.FC<OrderItemsListProps> = React.memo(({
             `}
           >
             <div className="flex items-center">
-
-              {/* Quantity */}
-              <span className="text-gray-600 pr-4 text-sm mr-3 w-4 text-center">
-              <div className="ml-2 w-5 h-5 bg-gray-200 rounded-sm flex items-center justify-center">
-                {item.qty}
-                </div>
-              </span>
               
-              {/* Item name */}
+              {/* Item name - no quantity display since each item is separate */}
               <span className={`
                 text-base px-4
                 ${isSelectedByMe 
@@ -87,7 +80,7 @@ const OrderItemsList: React.FC<OrderItemsListProps> = React.memo(({
                     : 'text-gray-900'
                 }
               `}>
-                {formatPrice(item.price * item.qty)}
+                {formatPrice(item.price)}
               </span>
               
               {/* Check Mark Circle - only show if selected by me */}
