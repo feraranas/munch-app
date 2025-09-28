@@ -39,8 +39,30 @@ services:
       - DD_VERSION=0.0.1
       - DD_AGENT_HOST=datadog-agent
       - DD_SITE=us5.datadoghq.com
+      - DATABASE_TYPE=postgres
+      - DATABASE_URL=postgres://munch_user:munch_password@postgres:5432/munch_app_dev?sslmode=disable
     depends_on:
+      - postgres
       - datadog-agent
+
+  postgres:
+    container_name: postgres
+    image: postgres:15-alpine
+    restart: always
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=munch_app_dev
+      - POSTGRES_USER=munch_user
+      - POSTGRES_PASSWORD=munch_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backend/migrations:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U munch_user -d munch_app_dev"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   datadog-agent:
     container_name: datadog-agent
@@ -54,4 +76,7 @@ services:
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - /proc/:/host/proc/:ro
-      - /sys/fs/cgroup:/host/sys/fs/cgroup:ro 
+      - /sys/fs/cgroup:/host/sys/fs/cgroup:ro
+
+volumes:
+  postgres_data:

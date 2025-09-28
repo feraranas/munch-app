@@ -7,17 +7,21 @@ import (
 
 // Config holds all configuration for the application
 type Config struct {
-	APIPort     int
-	FrontendURL string
-	APIURL      string
+	APIPort      int
+	FrontendURL  string
+	APIURL       string
+	DatabaseURL  string
+	DatabaseType string // "sqlite" or "postgres"
 }
 
 // LoadConfig loads configuration from environment variables with defaults
 func LoadConfig() *Config {
 	config := &Config{
-		APIPort:     8080,
-		FrontendURL: "http://localhost:3000",
-		APIURL:      "http://localhost:8080",
+		APIPort:      8080,
+		FrontendURL:  "http://localhost:3000",
+		APIURL:       "http://localhost:8080",
+		DatabaseType: "sqlite",       // Default to SQLite for backward compatibility
+		DatabaseURL:  "munch_app.db", // Default SQLite file
 	}
 
 	// Load from environment variables if they exist
@@ -33,6 +37,14 @@ func LoadConfig() *Config {
 
 	if apiURL := os.Getenv("API_URL"); apiURL != "" {
 		config.APIURL = apiURL
+	}
+
+	if dbType := os.Getenv("DATABASE_TYPE"); dbType != "" {
+		config.DatabaseType = dbType
+	}
+
+	if dbURL := os.Getenv("DATABASE_URL"); dbURL != "" {
+		config.DatabaseURL = dbURL
 	}
 
 	return config

@@ -12,6 +12,7 @@ import (
 	"github.com/gin-gonic/gin"
 	gingin "gopkg.in/DataDog/dd-trace-go.v1/contrib/gin-gonic/gin"
 	"gopkg.in/DataDog/dd-trace-go.v1/ddtrace/tracer"
+	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
@@ -72,9 +73,20 @@ func main() {
 
 func (app *App) initDB() error {
 	var err error
-	app.DB, err = gorm.Open(sqlite.Open("munch_app.db"), &gorm.Config{})
+	var dialector gorm.Dialector
+
+	switch app.Config.DatabaseType {
+	case "postgres":
+		dialector = postgres.Open(app.Config.DatabaseURL)
+	case "sqlite":
+		dialector = sqlite.Open(app.Config.DatabaseURL)
+	default:
+		return fmt.Errorf("unsupported database type: %s", app.Config.DatabaseType)
+	}
+
+	app.DB, err = gorm.Open(dialector, &gorm.Config{})
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to connect to database: %w", err)
 	}
 
 	// Auto migrate the schema
