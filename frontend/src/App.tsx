@@ -5,6 +5,7 @@ import CheckView from './components/CheckView';
 import QRGenerator from './components/QRGenerator';
 import WaitstaffMenu from './components/WaitstaffMenu';
 import AdminDashboard from './components/AdminDashboard';
+import CardDetailView from './components/CardDetailView';
 import BottomNavBar from './components/BottomNavBar';
 import * as Sentry from "@sentry/react";
 
@@ -44,6 +45,10 @@ const router = createBrowserRouter([
       {
         path: "admin",
         element: <AdminDashboard />,
+      },
+      {
+        path: "admin/table/:tableId",
+        element: <CardDetailView />,
       },
     ],
   },

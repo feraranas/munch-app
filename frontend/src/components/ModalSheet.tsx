@@ -14,6 +14,7 @@ interface ModalSheetProps {
   formatPrice: (price: number) => string;
   onPayment: () => void;
   onCancelPayment: () => void;
+  buttonText?: string;
 }
 
 function ModalSheet({ 
@@ -25,7 +26,8 @@ function ModalSheet({
   selectedItemsCount,
   formatPrice, 
   onPayment,
-  onCancelPayment 
+  onCancelPayment,
+  buttonText 
 }: ModalSheetProps) {
   const [isOpen, setOpen] = useState(false);
   const onClickExpandModalCTA = () => setOpen(true);  
@@ -50,6 +52,7 @@ function ModalSheet({
         onClickExpand={onClickExpandModalCTA} 
         myTotal={myTotal}
         formatPrice={formatPrice}
+        buttonText={buttonText}
       />
       
       <Sheet

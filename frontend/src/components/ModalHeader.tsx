@@ -4,11 +4,13 @@ export function ModalHeader({
     onClickExpand,
     myTotal,
     formatPrice,
+    buttonText = "Pagar",
 }: {
     isPlayerOpen: boolean;
     onClickExpand: () => void;
     myTotal: number;
     formatPrice: (price: number) => string;
+    buttonText?: string;
 }) {
     return (
         <>
@@ -33,7 +35,7 @@ export function ModalHeader({
                                        transition-all duration-200 shadow-sm" 
                             onClick={onClickExpand}
                         >
-                            Pagar
+                            {buttonText}
                         </button>
                     </div>
                 </div>
