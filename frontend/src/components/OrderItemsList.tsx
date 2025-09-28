@@ -98,8 +98,9 @@ const OrderItemsList: React.FC<OrderItemsListProps> = React.memo(({
                 {formatPrice(item.price * item.qty)}
               </span>
               
-              {/* Check Mark Circle - only show if selected by me */}
-              {isSelectedByMe && (
+              {/* Selection indicator */}
+              {isSelectedByMe ? (
+                // Check Mark Circle - selected by me
                 <div className="ml-2 w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
                   <CheckMarkIcon 
                     width={10} 
@@ -108,7 +109,11 @@ const OrderItemsList: React.FC<OrderItemsListProps> = React.memo(({
                     className="flex-shrink-0"
                   />
                 </div>
-              )}
+              ) : !isSelectedByOther ? (
+                // Empty Mark Circle - clickable item cue
+                <div className="ml-2 w-5 h-5 border-2 border-gray-300 rounded-full flex items-center justify-center hover:border-gray-400 transition-colors duration-200">
+                </div>
+              ) : null}
             </div>
 
           </div>
