@@ -1,14 +1,14 @@
 
 import { BottomNavigation } from "./BottomNavigation";
-import SimpleAvatar from "./Avatar";
+import MenuIcon from "./MenuIcon";
 
 function BottomNavBar() {
   const bottomNavItems = [
     {
       title: "Menu",
       onClick: () => {},
-      icon: <img src='../../public/menu-item.svg' />,
-      activeIcon: <img src='../../public/menu-item.svg' />
+      icon: <MenuIcon width={24} height={24} fill="#666666" />,
+      activeIcon: <MenuIcon width={24} height={24} fill="white" />
     },
     {
       title: "Cuenta",
