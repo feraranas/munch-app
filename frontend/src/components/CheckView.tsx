@@ -13,6 +13,7 @@ interface RouteParams {
 
 interface OrderItem {
   id: string;
+  menuId: string;
   name: string;
   price: number;
   qty: number;
@@ -162,8 +163,8 @@ const CheckView: React.FC = () => {
     if (!qrSession?.order?.items) return 0;
 
     return qrSession.order.items
-      .filter(item => selectedItems.has(item.id))
-      .reduce((total, item) => total + item.price, 0); // Each item has qty=1, so just add the price
+      .filter(item => selectedItems.has(item.menuId))
+      .reduce((total, item) => total + (item.price * item.qty), 0);
   };
 
   // const calculateRemainingBalance = () => {
@@ -206,20 +207,20 @@ const CheckView: React.FC = () => {
     alert('¡Pago confirmado! Gracias por tu pago.');
   };
 
-  const handleItemSelection = (itemId: string) => {
+  const handleItemSelection = (menuId: string) => {
     setSelectedItems(prev => {
       const newSelection = new Set(prev);
-      const isCurrentlySelected = newSelection.has(itemId);
+      const isCurrentlySelected = newSelection.has(menuId);
       const willBeSelected = !isCurrentlySelected;
 
       if (isCurrentlySelected) {
-        newSelection.delete(itemId);
+        newSelection.delete(menuId);
       } else {
-        newSelection.add(itemId);
+        newSelection.add(menuId);
       }
 
       // Send WebSocket message to notify other users
-      sendItemSelection(itemId, willBeSelected);
+      sendItemSelection(menuId, willBeSelected);
 
       return newSelection;
     });
