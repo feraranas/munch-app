@@ -235,79 +235,89 @@ const CheckView: React.FC = () => {
   };
 
   return (
-    <div className="container">
-      <div className="">
-
-        {/* Collaborative Users Component - shows all connected users */}
-        {orderId && (
-          <CollaborativeUsers
-            qrSessionId={orderId}
-            isConnected={isConnected}
-            connectedUsers={connectedUsers}
-          />
-        )}
-
-        {qrSession?.table_number && (
-          qrSession.table_number
-        )}
-        {qrSession && qrSession.order && (
-          <div className="flex justify-between items-center text-lg font-bold text-gray-800 mb-4">
-            <span>Total de la cuenta:</span>
-            <span>{formatPrice(qrSession.order.total)}</span>
-          </div>
-        )}
-
-        {/* WebSocket connection error */}
-        {connectionError && (
-          <div className="p-3 bg-red-100 border border-red-300 rounded-md text-red-800 text-sm mb-4">
-            ⚠️ Error de conexión: {connectionError}
-          </div>
-        )}
-
-        {qrSession && !qrSession.has_order && (
-          <div className="mt-5 p-5 bg-yellow-100 border border-yellow-300 rounded-lg text-center">
-            <h3>⏳ Esperando Orden</h3>
-            <p>{qrSession.message}</p>
-            <p className="text-sm text-gray-500">
-              El personal del restaurante creará tu orden. La página se actualizará automáticamente cada 3 segundos.
-            </p>
-            <button
-              onClick={() => fetchQRSession(false)}
-              disabled={polling}
-              className={`mt-3 py-2 px-4 bg-blue-600 text-white border-none rounded-md text-sm transition-colors duration-200 ${polling ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:bg-blue-700'
-                }`}
-            >
-              {polling ? 'Actualizando...' : '🔄 Actualizar ahora'}
-            </button>
-          </div>
-        )}
-
-        {qrSession && qrSession.has_order && qrSession.order && (
-          <div className="mt-6">
-            <OrderItemsList
-              items={qrSession.order.items}
-              selectedItems={selectedItems}
-              itemSelections={itemSelections}
+    <div className="h-screen flex flex-col">
+      {/* Fixed Header Section */}
+      <div className="flex-shrink-0 bg-white border-b border-gray-200 shadow-sm">
+        <div className="container">
+          {/* Collaborative Users Component - shows all connected users */}
+          {orderId && (
+            <CollaborativeUsers
+              qrSessionId={orderId}
+              isConnected={isConnected}
               connectedUsers={connectedUsers}
-              onItemSelection={handleItemSelection}
-              formatPrice={formatPrice}
             />
-          </div>
-        )}
+          )}
 
+          {qrSession?.table_number && (
+            <div className="text-sm text-gray-600">
+              Mesa: {qrSession.table_number}
+            </div>
+          )}
+          
+          {qrSession && qrSession.order && (
+            <div className="flex justify-between items-center text-lg font-bold text-gray-800">
+              <span>Total de la cuenta:</span>
+              <span>{formatPrice(qrSession.order.total)}</span>
+            </div>
+          )}
 
-        <ModalSheet
-          myTotal={calculateMyTotal()}
-          // totalPaidByGroup={totalPaidByGroup}
-          // totalPaid={totalPaid}
-          // remainingBalance={calculateRemainingBalance()}
-          paymentProcessing={paymentProcessing}
-          selectedItemsCount={selectedItems.size}
-          formatPrice={formatPrice}
-          onPayment={confirmPayment}
-          onCancelPayment={handleCancelPayment}
-        />
+          {/* WebSocket connection error */}
+          {connectionError && (
+            <div className="p-3 bg-red-100 border border-red-300 rounded-md text-red-800 text-sm mb-4">
+              ⚠️ Error de conexión: {connectionError}
+            </div>
+          )}
+        </div>
       </div>
+
+      {/* Scrollable Content Section */}
+      <div className="flex-1 overflow-y-auto">
+        <div className="container">
+          {qrSession && !qrSession.has_order && (
+            <div className="mt-5 p-5 bg-yellow-100 border border-yellow-300 rounded-lg text-center">
+              <h3>⏳ Esperando Orden</h3>
+              <p>{qrSession.message}</p>
+              <p className="text-sm text-gray-500">
+                El personal del restaurante creará tu orden. La página se actualizará automáticamente cada 3 segundos.
+              </p>
+              <button
+                onClick={() => fetchQRSession(false)}
+                disabled={polling}
+                className={`mt-3 py-2 px-4 bg-blue-600 text-white border-none rounded-md text-sm transition-colors duration-200 ${polling ? 'cursor-not-allowed opacity-60' : 'cursor-pointer hover:bg-blue-700'
+                  }`}
+              >
+                {polling ? 'Actualizando...' : '🔄 Actualizar ahora'}
+              </button>
+            </div>
+          )}
+
+          {qrSession && qrSession.has_order && qrSession.order && (
+            <div className="pb-40">
+              <OrderItemsList
+                items={qrSession.order.items}
+                selectedItems={selectedItems}
+                itemSelections={itemSelections}
+                connectedUsers={connectedUsers}
+                onItemSelection={handleItemSelection}
+                formatPrice={formatPrice}
+              />
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Modal Sheet - positioned outside scrollable content */}
+      <ModalSheet
+        myTotal={calculateMyTotal()}
+        // totalPaidByGroup={totalPaidByGroup}
+        // totalPaid={totalPaid}
+        // remainingBalance={calculateRemainingBalance()}
+        paymentProcessing={paymentProcessing}
+        selectedItemsCount={selectedItems.size}
+        formatPrice={formatPrice}
+        onPayment={confirmPayment}
+        onCancelPayment={handleCancelPayment}
+      />
     </div>
   );
 };
