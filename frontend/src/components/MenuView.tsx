@@ -199,7 +199,7 @@ const MenuView: React.FC = () => {
           <div className="flex justify-between items-center py-2">
             <div className="flex items-center">
               <button
-                onClick={() => navigate('/admin')}
+                onClick={() => navigate(`/admin/table/${session.id}/pos`)}
                 className="bg-transparent border-none cursor-pointer mr-3 hover:bg-gray-100 rounded transition-colors duration-200"
               >
                 <LessThanIcon
@@ -209,12 +209,12 @@ const MenuView: React.FC = () => {
                   className="flex-shrink-0"
                 />
               </button>
-              <h1 className="m-0 text-2xl font-semibold text-gray-800">
+              <h1 className="m-0 text-xl font-semibold text-gray-800">
                 {session.table_number || `Mesa ${session.id.slice(0, 8)}`}
               </h1>
             </div>
 
-            <div className={`px-2 py-1 rounded-sm text-white text-sm font-medium ${getStatusColor(session)}`}>
+            <div className={`px-2 py-1 rounded-sm text-white text-sm font-medium text-center ${getStatusColor(session)}`}>
               {getStatusText(session)}
             </div>
 

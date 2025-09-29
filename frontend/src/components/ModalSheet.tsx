@@ -60,7 +60,7 @@ function ModalSheet({
         onClose={onClickCloseModalCTA}
         // modalEffectRootId="root"
       >
-        <Sheet.Container style={{ backgroundColor: "#f7e5e5", maxWidth: "680px" }}>
+        <Sheet.Container className='bg-gray-50'>
           <Sheet.Header />
             {/* <Sheet.DragIndicator /> */}
           <Sheet.Content>

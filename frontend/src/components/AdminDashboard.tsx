@@ -214,21 +214,25 @@ const AdminDashboard: React.FC = () => {
           {/* </div>
         </div> */}
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-3">
           {sessions.map((session) => (
             <div
               key={session.id}
               onClick={() => handleSessionClick(session)}
-              className="relative bg-white border-2 border-gray-200 rounded-lg rounded-tr-none p-4 cursor-pointer transition-all duration-200 shadow-sm hover:border-blue-500 hover:-translate-y-0.5 hover:shadow-md"
+              className="relative bg-white border-b-2 border-r-2 border-l-2  border-black-100
+                         rounded-2xl rounded-tr-none p-2 cursor-pointer 
+                         transition-all duration-200 shadow-sm 
+                         hover:border-blue-500 hover:-translate-y-0.5 
+                         hover:shadow-md"
             >
               {/* Status badge in top-right corner */}
-              <div className={`absolute top-0 right-0 px-3 py-2 text-xs font-medium rounded-bl-lg shadow-sm ${getStatusColor(session)}`}>
+              <div className={`absolute top-0 right-0 px-3 py-1 text-xs font-medium rounded-bl-3xl shadow-md shadow-sm ${getStatusColor(session)}`}>
                 {getStatusText(session)}
               </div>
 
               {/* Row 1: Table Number */}
-              <div className="mb-3 mt-5">
-                <h4 className="m-0 text-lg font-semibold text-gray-800">
+              <div className="mb-3 mt-4">
+                <h4 className="m-0 text-md font-semibold text-gray-800">
                   {session.table_number || `Mesa ${session.id.slice(0, 8)}`}
                 </h4>
               </div>
