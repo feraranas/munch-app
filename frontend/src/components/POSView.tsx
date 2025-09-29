@@ -179,22 +179,24 @@ const POSView: React.FC = () => {
                   className="flex-shrink-0"
                 />
               </button>
-              <h1 className="m-0 text-2xl font-semibold text-gray-800">
+              <h1 className="m-0 text-xl font-semibold text-gray-800">
                 {session.table_number || `Mesa ${session.id.slice(0, 8)}`}
               </h1>
             </div>
 
-            <div className={`px-2 py-1 rounded-sm text-white text-sm font-medium ${getStatusColor(session)}`}>
+            <div className={`px-2 py-1 rounded-sm text-white text-sm font-medium text-center ${getStatusColor(session)}`}>
               {getStatusText(session)}
             </div>
 
           </div>
+          {getStatusText(session) === 'Orden activa' && (
             <button
-              className='flex justify-end px-2 py-1 rounded-sm text-black text-sm font-medium bg-gray-500'
+              className='flex justify-end w-full px-2 py-1 rounded-sm text-black text-sm font-medium bg-gray-500'
               onClick={() => handleSessionClick(session)}
             >
               Ver orden completa
             </button>
+          )}
 
         </div>
       </div>

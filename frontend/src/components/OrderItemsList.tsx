@@ -158,7 +158,7 @@ const OrderItemsList: React.FC<OrderItemsListProps> = React.memo(({
                     e.stopPropagation();
                     onAddItem(item as MenuItem);
                   }}
-                  className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-md text-sm transition-colors duration-200"
+                  className="bg-addItem hover:bg-blue-600 text-white px-3 py-1 rounded-md text-sm transition-colors duration-200"
                 >
                   {addButtonText}
                 </button>
