@@ -9,11 +9,11 @@ interface ModalSheetProps {
   totalPaidByGroup?: number;
   totalPaid?: number;
   remainingBalance?: number;
-  paymentProcessing: boolean;
-  selectedItemsCount: number;
+  paymentProcessing?: boolean;
+  selectedItemsCount?: number;
   formatPrice: (price: number) => string;
-  onPayment: () => void;
-  onCancelPayment: () => void;
+  onPayment?: () => void;
+  onCancelPayment?: () => void;
   buttonText?: string;
 }
 
@@ -69,17 +69,17 @@ function ModalSheet({
               // totalPaidByGroup={totalPaidByGroup ?? 0}
               // totalPaid={totalPaid ?? 0}
               // remainingBalance={remainingBalance ?? 0}
-              paymentProcessing={paymentProcessing}
+              paymentProcessing={paymentProcessing ?? false}
               formatPrice={formatPrice}
-              onPayment={onPayment}
+              onPayment={onPayment ?? (() => {})}
             />
             <PaymentForm
               myTotal={myTotal}
-              selectedItemsCount={selectedItemsCount}
-              paymentProcessing={paymentProcessing}
+              selectedItemsCount={selectedItemsCount ?? 0}
+              paymentProcessing={paymentProcessing ?? false}
               formatPrice={formatPrice}
-              onConfirmPayment={onPayment}
-              onCancel={onCancelPayment}
+              onConfirmPayment={onPayment ?? (() => {})}
+              onCancel={onCancelPayment ?? (() => {})}
             />
           </Sheet.Content>
         </Sheet.Container>

@@ -88,9 +88,9 @@ const AdminDashboard: React.FC = () => {
   };
 
   const getStatusColor = (session: QRSession) => {
-    if (!session.has_order) return '#6c757d'; // Gray for no order
-    if (session.order?.status === 'paid') return '#28a745'; // Green for paid
-    return '#007bff'; // Blue for active order
+    if (!session.has_order) return 'bg-gray-100 text-gray-600'; // Gray for no order
+    if (session.order?.status === 'paid') return 'bg-green-500 text-white'; // Green for paid
+    return 'bg-blue-500 text-white'; // Blue for active order
   };
 
   const getStatusText = (session: QRSession) => {
@@ -101,10 +101,10 @@ const AdminDashboard: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="container">
-        <div className="card">
-          <h2>Cargando dashboard...</h2>
-          <p>Por favor espera mientras cargamos las sesiones QR.</p>
+      <div className="container mx-auto px-4">
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h2 className="text-xl font-semibold mb-2">Cargando dashboard...</h2>
+          <p className="text-gray-600">Por favor espera mientras cargamos las sesiones QR.</p>
         </div>
       </div>
     );
@@ -112,11 +112,14 @@ const AdminDashboard: React.FC = () => {
 
   if (error) {
     return (
-      <div className="container">
-        <div className="card">
-          <h2>Error en Dashboard</h2>
-          <p>{error}</p>
-          <button className="btn" onClick={fetchSessions}>
+      <div className="container mx-auto px-4">
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h2 className="text-xl font-semibold mb-2 text-red-600">Error en Dashboard</h2>
+          <p className="text-gray-600 mb-4">{error}</p>
+          <button 
+            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md transition-colors duration-200" 
+            onClick={fetchSessions}
+          >
             🔄 Reintentar
           </button>
         </div>
@@ -125,12 +128,12 @@ const AdminDashboard: React.FC = () => {
   }
 
   return (
-    <div className="container">
-      <div className="">
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-          <div style={{ display: 'flex', alignItems: 'center' }}>
+    <div className="container mx-auto px-4">
+      <div>
+        <div className="flex justify-between items-center mb-5">
+          <div className="flex items-center">
             <Logo width={30} height={30} />
-            <h2 style={{ marginLeft: '12px', margin: '0 0 0 12px' }}>Dashboard</h2>
+            <h2 className="ml-3 text-2xl font-semibold text-gray-800">Dashboard</h2>
           </div>
           
           {/* <div style={{ display: 'flex', gap: '10px' }}>   */}
@@ -211,68 +214,37 @@ const AdminDashboard: React.FC = () => {
           {/* </div>
         </div> */}
 
-        <div style={{ 
-          display: 'grid', 
-          gridTemplateColumns: 'repeat(3, 1fr)', 
-          gap: '15px' 
-        }}>
+        <div className="grid grid-cols-2 gap-4">
           {sessions.map((session) => (
             <div
               key={session.id}
               onClick={() => handleSessionClick(session)}
-              style={{
-                border: '2px solid #e9ecef',
-                borderRadius: '8px 0px 8px 8px',
-                padding: '15px',
-                cursor: 'pointer',
-                backgroundColor: 'white',
-                transition: 'all 0.2s ease',
-                boxShadow: '0 2px 4px rgba(0,0,0,0.1)',
-                position: 'relative'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = '#007bff';
-                e.currentTarget.style.transform = 'translateY(-2px)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = '#e9ecef';
-                e.currentTarget.style.transform = 'translateY(0px)';
-              }}
+              className="relative bg-white border-2 border-gray-200 rounded-lg rounded-tr-none p-4 cursor-pointer transition-all duration-200 shadow-sm hover:border-blue-500 hover:-translate-y-0.5 hover:shadow-md"
             >
               {/* Status badge in top-right corner */}
-              <div style={{
-                position: 'absolute',
-                top: '0',
-                right: '0',
-                padding: '8px 12px',
-                backgroundColor: getStatusColor(session),
-                color: 'white',
-                fontSize: '12px',
-                fontWeight: '500',
-                borderRadius: '0 0 0 8px'
-              }}>
+              <div className={`absolute top-0 right-0 px-3 py-2 text-xs font-medium rounded-bl-lg shadow-sm ${getStatusColor(session)}`}>
                 {getStatusText(session)}
               </div>
 
               {/* Row 1: Table Number */}
-              <div style={{ marginBottom: '12px', marginTop: '20px' }}>
-                <h4 style={{ margin: '0', fontSize: '18px', fontWeight: '600' }}>
+              <div className="mb-3 mt-5">
+                <h4 className="m-0 text-lg font-semibold text-gray-800">
                   {session.table_number || `Mesa ${session.id.slice(0, 8)}`}
                 </h4>
               </div>
 
               {/* Row 2: Items count */}
-              <div style={{ fontSize: '14px', marginBottom: '8px', color: '#6c757d' }}>
+              <div className="text-sm mb-2 text-gray-500">
                 <strong>Orden:</strong> {session.has_order && session.order ? `${session.order.items.length} items` : '0 items'}
               </div>
 
               {/* Row 3: Total */}
-              <div style={{ fontSize: '16px', fontWeight: '600', color: '#28a745', marginBottom: '8px' }}>
+              <div className="text-base font-semibold text-green-600 mb-2">
                 <strong>Total:</strong> {session.has_order && session.order ? formatPrice(session.order.total) : '$0.00'}
               </div>
 
               {/* Row 4: Created at */}
-              <div style={{ fontSize: '12px', color: '#6c757d' }}>
+              <div className="text-xs text-gray-500">
                 <strong>Creada:</strong> {session.has_order && session.order ? formatDateTime(session.order.created_at) : '-'}
               </div>
             </div>
@@ -280,16 +252,13 @@ const AdminDashboard: React.FC = () => {
         </div>
 
         {sessions.length === 0 && (
-          <div style={{ 
-            textAlign: 'center', 
-            padding: '40px',
-            color: '#6c757d' 
-          }}>
-            <h3>No hay sesiones QR</h3>
-            <p>Crea códigos QR desde el <a href="/admin/qr">Generador de QR</a></p>
+          <div className="text-center py-10 text-gray-500">
+            <h3 className="text-lg font-medium mb-2">No hay sesiones QR</h3>
+            <p>Crea códigos QR desde el <a href="/admin/qr" className="text-blue-500 hover:text-blue-600 underline">Generador de QR</a></p>
           </div>
         )}
       </div>
+
 
     </div>
   );
