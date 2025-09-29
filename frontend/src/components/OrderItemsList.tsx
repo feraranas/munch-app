@@ -32,6 +32,8 @@ interface OrderItemsListProps {
   mode?: 'order' | 'menu';
   onAddItem?: (item: MenuItem) => void;
   addButtonText?: string;
+  // For tracking quantities in menu mode
+  orderItems?: OrderItem[];
 }
 
 const OrderItemsList: React.FC<OrderItemsListProps> = React.memo(({
@@ -43,7 +45,8 @@ const OrderItemsList: React.FC<OrderItemsListProps> = React.memo(({
   formatPrice,
   mode = 'order',
   onAddItem,
-  addButtonText = '+ Agregar'
+  addButtonText = '+ Agregar',
+  orderItems = []
 }) => {
   return (
     <div className="mb-5">
@@ -62,6 +65,11 @@ const OrderItemsList: React.FC<OrderItemsListProps> = React.memo(({
         const isSelectedByMe = selectedItems.has(itemKey);
         const selectedByUserId = itemSelections.get(itemKey);
         const isSelectedByOther = selectedByUserId && !isSelectedByMe;
+        
+        // Find current quantity for this menu item in cart (for menu mode)
+        const currentQuantity = mode === 'menu' 
+          ? orderItems.find(orderItem => orderItem.id === item.id)?.qty || 0
+          : 0;
         
         return (
           <div 
@@ -153,15 +161,22 @@ const OrderItemsList: React.FC<OrderItemsListProps> = React.memo(({
               
               {/* Add button for menu mode */}
               {mode === 'menu' && onAddItem && (
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onAddItem(item as MenuItem);
-                  }}
-                  className="bg-addItem hover:bg-blue-600 text-white px-3 py-1 rounded-md text-sm transition-colors duration-200"
-                >
-                  {addButtonText}
-                </button>
+                <div className="flex items-center gap-2">
+                  {currentQuantity > 0 && (
+                    <span className="text-sm text-gray-600 bg-gray-100 px-2 py-1 rounded-md">
+                      {currentQuantity}
+                    </span>
+                  )}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onAddItem(item as MenuItem);
+                    }}
+                    className="bg-addItem hover:bg-blue-600 text-white px-3 py-1 rounded-md text-sm transition-colors duration-200"
+                  >
+                    {addButtonText}
+                  </button>
+                </div>
               )}
             </div>
 

@@ -117,19 +117,80 @@ const POSView: React.FC = () => {
   };
 
   const addMenuItem = (menuItem: MenuItem) => {
-    const newOrderItem: OrderItem = {
-      id: menuItem.id,
-      menuId: `${menuItem.id}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-      name: menuItem.name,
-      price: menuItem.price,
-      qty: 1
-    };
-    setOrderItems(prev => [...prev, newOrderItem]);
+    setOrderItems(prev => {
+      // Check if item already exists in cart
+      const existingItemIndex = prev.findIndex(item => item.id === menuItem.id);
+      
+      if (existingItemIndex !== -1) {
+        // If item exists, increase quantity
+        const updatedItems = [...prev];
+        updatedItems[existingItemIndex] = {
+          ...updatedItems[existingItemIndex],
+          qty: updatedItems[existingItemIndex].qty + 1
+        };
+        return updatedItems;
+      } else {
+        // If item doesn't exist, add new item
+        const newOrderItem: OrderItem = {
+          id: menuItem.id,
+          menuId: `${menuItem.id}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          name: menuItem.name,
+          price: menuItem.price,
+          qty: 1
+        };
+        return [...prev, newOrderItem];
+      }
+    });
   };
 
 
   const calculateFullOrderTotal = () => {
     return orderItems.reduce((total, item) => total + (item.price * item.qty), 0);
+  };
+
+  const handleConfirmOrder = async () => {
+    if (!session || orderItems.length === 0) {
+      console.error('Cannot create order: missing session or empty cart');
+      return;
+    }
+
+    try {
+      const response = await fetch('http://localhost:8080/api/pos/order', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          qrId: session.id,
+          selectedItems: orderItems.map(item => ({
+            id: item.id,
+            menuId: item.menuId,
+            qty: item.qty
+          }))
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Order created successfully:', data);
+        
+        // Clear the cart after successful order creation
+        setOrderItems([]);
+        
+        // Refresh session data to show updated order status
+        fetchSessionData();
+        
+        // Show success feedback
+        alert(`¡Orden creada exitosamente! ID: ${data.id}`);
+      } else {
+        const errorData = await response.json();
+        console.error('Failed to create order:', errorData);
+        alert(`Error al crear la orden: ${errorData.error || 'Error desconocido'}`);
+      }
+    } catch (error) {
+      console.error('Error creating order:', error);
+      alert('Error de conexión. Asegúrate de que el servidor esté funcionando.');
+    }
   };
 
   if (loading) {
@@ -217,6 +278,7 @@ const POSView: React.FC = () => {
                 mode="menu"
                 onAddItem={addMenuItem}
                 addButtonText="+ Agregar"
+                orderItems={orderItems}
               />
             </div>
           </div>
@@ -229,6 +291,8 @@ const POSView: React.FC = () => {
         selectedItemsCount={orderItems.length}
         formatPrice={formatPrice}
         buttonText="Agregar"
+        orderItems={orderItems}
+        onConfirmOrder={handleConfirmOrder}
       />
     </div>
   );
