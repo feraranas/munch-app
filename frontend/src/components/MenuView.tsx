@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import * as Sentry from '@sentry/react';
 import { api } from '../config/environment';
 import OrderItemsList from './OrderItemsList';
-import ModalSheet from './ModalSheet';
+import LessThanIcon from './LessThanIcon';
 
 interface OrderItem {
   id: string;
@@ -40,7 +40,7 @@ interface RouteParams {
   tableId: string;
 }
 
-const CardDetailView: React.FC = () => {
+const MenuView: React.FC = () => {
   const { tableId } = useParams<keyof RouteParams>() as RouteParams;
   const navigate = useNavigate();
   const [session, setSession] = useState<QRSession | null>(null);
@@ -193,31 +193,33 @@ const CardDetailView: React.FC = () => {
   return (
     <div className="h-screen flex flex-col">
       {/* Fixed Header Section */}
-      <div className="flex-shrink-0 bg-white border-b border-gray-200 shadow-sm">
+      <div className="flex-shrink-0 bg-gray-100">
         <div className="container mx-auto px-4">
           {/* Header with table number and status */}
-          <div className="flex justify-between items-center py-5">
+          <div className="flex justify-between items-center py-2">
             <div className="flex items-center">
               <button
                 onClick={() => navigate('/admin')}
-                className="bg-transparent border-none text-lg cursor-pointer mr-3 p-1 hover:bg-gray-100 rounded transition-colors duration-200"
+                className="bg-transparent border-none cursor-pointer mr-3 hover:bg-gray-100 rounded transition-colors duration-200"
               >
-                ←
+                <LessThanIcon
+                  width={15}
+                  height={20}
+                  fill="#000000" 
+                  className="flex-shrink-0"
+                />
               </button>
               <h1 className="m-0 text-2xl font-semibold text-gray-800">
                 {session.table_number || `Mesa ${session.id.slice(0, 8)}`}
               </h1>
             </div>
 
-            <div className={`px-4 py-2 rounded-md text-white text-sm font-medium ${getStatusColor(session)}`}>
+            <div className={`px-2 py-1 rounded-sm text-white text-sm font-medium ${getStatusColor(session)}`}>
               {getStatusText(session)}
             </div>
+
           </div>
 
-          {/* Menu Label */}
-          <div className="text-lg font-semibold mb-4 text-gray-700 pb-4 border-b border-gray-100">
-            Menú
-          </div>
         </div>
       </div>
 
@@ -227,7 +229,7 @@ const CardDetailView: React.FC = () => {
           <div className="pb-40">
             {/* Current Order Items */}
             {orderItems.length > 0 && (
-              <div className="mb-8">
+              <div className="mb-4">
                 <div className="text-lg font-semibold mb-4 text-gray-800">
                   Orden Actual ({orderItems.length} items)
                 </div>
@@ -240,67 +242,16 @@ const CardDetailView: React.FC = () => {
                   formatPrice={formatPrice}
                 />
                 
-                {/* Remove Selected Items Button */}
-                {selectedItems.size > 0 && (
-                  <div className="mt-4">
-                    <button
-                      onClick={() => {
-                        selectedItems.forEach(menuId => removeOrderItem(menuId));
-                      }}
-                      className="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-md transition-colors duration-200"
-                    >
-                      🗑️ Eliminar Seleccionados ({selectedItems.size})
-                    </button>
-                  </div>
-                )}
               </div>
             )}
 
-            {/* Available Menu Items */}
-            <div>
-              <div className="text-lg font-semibold mb-4 text-gray-800">
-                Menú Disponible
-              </div>
-              <div className="space-y-2">
-                {menuItems.map((menuItem) => (
-                  <div
-                    key={menuItem.id}
-                    className="flex justify-between items-center py-3 px-4 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors duration-200"
-                  >
-                    <div className="flex items-center">
-                      <span className="text-base text-gray-900 px-4">
-                        {menuItem.name}
-                      </span>
-                    </div>
-                    
-                    <div className="flex items-center">
-                      <span className="text-base font-medium text-gray-900 mr-4">
-                        {formatPrice(menuItem.price)}
-                      </span>
-                      <button
-                        onClick={() => addMenuItem(menuItem)}
-                        className="bg-blue-500 hover:bg-blue-600 text-white px-3 py-1 rounded-md text-sm transition-colors duration-200"
-                      >
-                        + Agregar
-                      </button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
+           
           </div>
         </div>
       </div>
 
-      {/* Modal Sheet - show total order value */}
-      <ModalSheet
-        myTotal={calculateFullOrderTotal()}
-        selectedItemsCount={orderItems.length}
-        formatPrice={formatPrice}
-        buttonText="Actualizar Orden"
-      />
     </div>
   );
 };
 
-export default Sentry.withProfiler(CardDetailView);
+export default Sentry.withProfiler(MenuView);

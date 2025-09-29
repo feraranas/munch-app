@@ -84,7 +84,7 @@ const AdminDashboard: React.FC = () => {
   };
 
   const handleSessionClick = (session: QRSession) => {
-    navigate(`/admin/table/${session.id}`);
+    navigate(`/admin/table/${session.id}/pos`);
   };
 
   const getStatusColor = (session: QRSession) => {

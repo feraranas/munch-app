@@ -5,9 +5,10 @@ import CheckView from './components/CheckView';
 import QRGenerator from './components/QRGenerator';
 import WaitstaffMenu from './components/WaitstaffMenu';
 import AdminDashboard from './components/AdminDashboard';
-import CardDetailView from './components/CardDetailView';
 import BottomNavBar from './components/BottomNavBar';
 import * as Sentry from "@sentry/react";
+import POSView from './components/POSView';
+import MenuView from './components/MenuView';
 
 // Root layout component
 const RootLayout: React.FC = () => {
@@ -47,8 +48,12 @@ const router = createBrowserRouter([
         element: <AdminDashboard />,
       },
       {
-        path: "admin/table/:tableId",
-        element: <CardDetailView />,
+        path: "admin/table/:tableId/pos",
+        element: <POSView />,
+      },
+      {
+        path: "admin/table/:tableId/menu",
+        element: <MenuView />,
       },
     ],
   },
