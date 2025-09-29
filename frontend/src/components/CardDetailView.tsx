@@ -114,9 +114,9 @@ const CardDetailView: React.FC = () => {
   };
 
   const getStatusColor = (session: QRSession) => {
-    if (!session.has_order) return '#6c757d'; // Gray for no order
-    if (session.order?.status === 'paid') return '#28a745'; // Green for paid
-    return '#007bff'; // Blue for active order
+    if (!session.has_order) return 'bg-gray-500'; // Gray for no order
+    if (session.order?.status === 'paid') return 'bg-green-500'; // Green for paid
+    return 'bg-blue-500'; // Blue for active order
   };
 
   const getStatusText = (session: QRSession) => {
@@ -164,10 +164,10 @@ const CardDetailView: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="container">
-        <div className="card">
-          <h2>Cargando detalles...</h2>
-          <p>Por favor espera mientras cargamos la información de la mesa.</p>
+      <div className="container mx-auto px-4">
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h2 className="text-xl font-semibold mb-2">Cargando detalles...</h2>
+          <p className="text-gray-600">Por favor espera mientras cargamos la información de la mesa.</p>
         </div>
       </div>
     );
@@ -175,14 +175,13 @@ const CardDetailView: React.FC = () => {
 
   if (error || !session) {
     return (
-      <div className="container">
-        <div className="card">
-          <h2>Error</h2>
-          <p>{error}</p>
+      <div className="container mx-auto px-4">
+        <div className="bg-white rounded-lg shadow-md p-6">
+          <h2 className="text-xl font-semibold mb-2 text-red-600">Error</h2>
+          <p className="text-gray-600 mb-4">{error}</p>
           <button
-            className="btn"
+            className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md transition-colors duration-200"
             onClick={() => navigate('/admin')}
-            style={{ marginTop: '10px' }}
           >
             ← Volver al Dashboard
           </button>
@@ -195,64 +194,36 @@ const CardDetailView: React.FC = () => {
     <div className="h-screen flex flex-col">
       {/* Fixed Header Section */}
       <div className="flex-shrink-0 bg-white border-b border-gray-200 shadow-sm">
-        <div className="container">
+        <div className="container mx-auto px-4">
           {/* Header with table number and status */}
-          <div style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            padding: '20px 0',
-            borderBottom: '1px solid #e9ecef',
-            marginBottom: '20px'
-          }}>
-
-            <div style={{ display: 'flex', alignItems: 'center' }}>
+          <div className="flex justify-between items-center py-5">
+            <div className="flex items-center">
               <button
                 onClick={() => navigate('/admin')}
-                style={{
-                  background: 'none',
-                  border: 'none',
-                  fontSize: '18px',
-                  cursor: 'pointer',
-                  marginRight: '10px',
-                  padding: '5px'
-                }}
+                className="bg-transparent border-none text-lg cursor-pointer mr-3 p-1 hover:bg-gray-100 rounded transition-colors duration-200"
               >
                 ←
               </button>
-              <h1 style={{ margin: '0', fontSize: '24px', fontWeight: '600' }}>
+              <h1 className="m-0 text-2xl font-semibold text-gray-800">
                 {session.table_number || `Mesa ${session.id.slice(0, 8)}`}
               </h1>
             </div>
 
-            <div style={{
-              padding: '8px 16px',
-              borderRadius: '6px',
-              backgroundColor: getStatusColor(session),
-              color: 'white',
-              fontSize: '14px',
-              fontWeight: '500'
-            }}>
+            <div className={`px-4 py-2 rounded-md text-white text-sm font-medium ${getStatusColor(session)}`}>
               {getStatusText(session)}
             </div>
+          </div>
 
-            {/* Menu Label */}
-            <div style={{
-              fontSize: '18px',
-              fontWeight: '600',
-              marginBottom: '15px',
-              color: '#333'
-            }}>
-              Menú
-            </div>
-
+          {/* Menu Label */}
+          <div className="text-lg font-semibold mb-4 text-gray-700 pb-4 border-b border-gray-100">
+            Menú
           </div>
         </div>
       </div>
 
       {/* Scrollable Content Section */}
       <div className="flex-1 overflow-y-auto">
-        <div className="container">
+        <div className="container mx-auto px-4">
           <div className="pb-40">
             {/* Current Order Items */}
             {orderItems.length > 0 && (
