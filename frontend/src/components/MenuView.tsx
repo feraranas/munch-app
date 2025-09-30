@@ -5,18 +5,25 @@ import { api } from '../config/environment';
 import OrderItemsList from './OrderItemsList';
 import LessThanIcon from './LessThanIcon';
 
+interface Topping {
+  name: string;
+  price: number;
+}
+
 interface OrderItem {
   id: string;
   menuId: string;
   name: string;
   price: number;
   qty: number;
+  toppings?: Topping[];
 }
 
 interface MenuItem {
   id: string;
   name: string;
   price: number;
+  toppings?: Topping[];
 }
 
 interface Order {
@@ -159,7 +166,10 @@ const MenuView: React.FC = () => {
 
 
   const calculateFullOrderTotal = () => {
-    return orderItems.reduce((total, item) => total + (item.price * item.qty), 0);
+    return orderItems.reduce((total, item) => {
+      const toppingsPrice = item.toppings?.reduce((sum, t) => sum + t.price, 0) || 0;
+      return total + ((item.price + toppingsPrice) * item.qty);
+    }, 0);
   };
 
   if (loading) {
