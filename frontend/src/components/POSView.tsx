@@ -1,28 +1,11 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import * as Sentry from '@sentry/react';
-import { api } from '../config/environment';
+import { useQRSession, useMenuItems, useCreateOrder } from '../hooks/useQueries';
+import { QRSession } from '../services/api';
 import OrderItemsList, { MenuItem, OrderItem } from './OrderItemsList';
 import ModalSheet from './ModalSheet';
 import LessThanIcon from './LessThanIcon';
-
-
-interface Order {
-  id: string;
-  items: OrderItem[];
-  total: number;
-  status: string;
-  created_at: number;
-}
-
-interface QRSession {
-  id: string;
-  table_number?: string;
-  created_at: number;
-  updated_at: number;
-  has_order: boolean;
-  order?: Order;
-}
 
 interface RouteParams {
   tableId: string;
@@ -31,63 +14,25 @@ interface RouteParams {
 const POSView: React.FC = () => {
   const { tableId } = useParams<keyof RouteParams>() as RouteParams;
   const navigate = useNavigate();
-  const [session, setSession] = useState<QRSession | null>(null);
-  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
 
-  // TODO: Seems redundant to fetch all QR sessions since the parent element 
-  // AdminDashboard.tsx did this for us. So this component could be seeded
-  // the QRSession. Or, create a new endpoint that gets QRSession by ID.
-  // or even better use the existing getOrderByQR /qr/:qrId endpoint.
-  const fetchSessionData = useCallback(async () => {
-    try {
-      setLoading(true);
-      const response = await fetch(api.adminSessions());
+  // Use TanStack Query hooks for data fetching
+  const { data: sessionData, isLoading: sessionLoading, error: sessionError } = useQRSession(tableId);
+  const { data: menuItems = [], isLoading: menuLoading } = useMenuItems();
+  const createOrderMutation = useCreateOrder();
 
-      if (!response.ok) {
-        throw new Error(`Failed to fetch session: ${response.statusText}`);
-      }
+  // Convert QRSessionResponse to QRSession format
+  const session: QRSession | null = sessionData ? {
+    id: sessionData.qr_id,
+    table_number: sessionData.table_number,
+    has_order: sessionData.has_order,
+    order: sessionData.order,
+    created_at: 0, // Not provided by API, using default
+    updated_at: 0, // Not provided by API, using default
+  } : null;
 
-      const data = await response.json();
-      const foundSession = data.sessions.find((s: QRSession) => s.id === tableId);
-
-      if (!foundSession) {
-        throw new Error('Session not found');
-      }
-
-      setSession(foundSession);
-      setError(null);
-    } catch (err) {
-      console.error('Error fetching session:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load session');
-    } finally {
-      setLoading(false);
-    }
-  }, [tableId]);
-
-  const fetchMenuItems = useCallback(async () => {
-    try {
-      const response = await fetch('http://localhost:8080/api/menu/items');
-      if (response.ok) {
-        const data = await response.json();
-        setMenuItems(data.items);
-      } else {
-        console.error('Failed to fetch menu items');
-      }
-    } catch (error) {
-      console.error('Error fetching menu items:', error);
-    }
-  }, []);
-
+  // Initialize orderItems from session data when it loads
   useEffect(() => {
-    fetchSessionData();
-    fetchMenuItems();
-  }, [fetchSessionData, fetchMenuItems]);
-
-  useEffect(() => {
-    // Initialize orderItems from session data
     if (session?.order?.items) {
       setOrderItems(session.order.items);
     }
@@ -143,7 +88,6 @@ const POSView: React.FC = () => {
     });
   };
 
-
   const calculateFullOrderTotal = () => {
     return orderItems.reduce((total, item) => total + (item.price * item.qty), 0);
   };
@@ -154,46 +98,34 @@ const POSView: React.FC = () => {
       return;
     }
 
-    try {
-      const response = await fetch('http://localhost:8080/api/pos/order', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
+    createOrderMutation.mutate(
+      {
+        qrId: session.id,
+        selectedItems: orderItems.map(item => ({
+          id: item.id,
+          menuId: item.menuId,
+          qty: item.qty
+        }))
+      },
+      {
+        onSuccess: (data) => {
+          // Clear the cart after successful order creation
+          setOrderItems([]);
+          
+          // Show success feedback
+          alert(`¡Orden creada exitosamente! ID: ${data.id}`);
         },
-        body: JSON.stringify({
-          qrId: session.id,
-          selectedItems: orderItems.map(item => ({
-            id: item.id,
-            menuId: item.menuId,
-            qty: item.qty
-          }))
-        }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        console.log('Order created successfully:', data);
-        
-        // Clear the cart after successful order creation
-        setOrderItems([]);
-        
-        // Refresh session data to show updated order status
-        fetchSessionData();
-        
-        // Show success feedback
-        alert(`¡Orden creada exitosamente! ID: ${data.id}`);
-      } else {
-        const errorData = await response.json();
-        console.error('Failed to create order:', errorData);
-        alert(`Error al crear la orden: ${errorData.error || 'Error desconocido'}`);
+        onError: (error) => {
+          alert(`Error al crear la orden: ${error.message || 'Error desconocido'}`);
+        }
       }
-    } catch (error) {
-      console.error('Error creating order:', error);
-      alert('Error de conexión. Asegúrate de que el servidor esté funcionando.');
-    }
+    );
   };
 
-  if (loading) {
+  const isLoading = sessionLoading || menuLoading;
+  const error = sessionError;
+
+  if (isLoading) {
     return (
       <div className="container mx-auto px-4">
         <div className="bg-white rounded-lg shadow-md p-6">
@@ -209,7 +141,7 @@ const POSView: React.FC = () => {
       <div className="container mx-auto px-4">
         <div className="bg-white rounded-lg shadow-md p-6">
           <h2 className="text-xl font-semibold mb-2 text-red-600">Error</h2>
-          <p className="text-gray-600 mb-4">{error}</p>
+          <p className="text-gray-600 mb-4">{error instanceof Error ? error.message : 'Failed to load session'}</p>
           <button
             className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md transition-colors duration-200"
             onClick={() => navigate('/admin')}

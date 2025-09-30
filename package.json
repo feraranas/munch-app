@@ -1,5 +1,6 @@
 {
   "dependencies": {
+    "@tanstack/react-query": "^5.90.2",
     "motion": "^12.23.21",
     "react-modal-sheet": "^5.1.2"
   }

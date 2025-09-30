@@ -33,6 +33,8 @@ export const api = {
   generateQr: () => `${config.apiUrl}/api/qr/generate`,
   createQr: () => `${config.apiUrl}/api/qr/create`,
   mockOrder: () => `${config.apiUrl}/api/pos/mock-order`,
+  posOrder: () => `${config.apiUrl}/api/pos/order`,
+  updateOrder: () => `${config.apiUrl}/api/orders/update`,
   adminSessions: () => `${config.apiUrl}/api/admin/sessions`,
   
   // WebSocket endpoints
