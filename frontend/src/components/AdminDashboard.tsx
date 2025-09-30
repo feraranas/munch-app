@@ -1,70 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import * as Sentry from '@sentry/react';
-import { api } from '../config/environment';
+import { useAdminSessions } from '../hooks/useQueries';
+import { QRSession } from '../services/api';
 import Logo from './Logo';
-
-interface OrderItem {
-  id: string;
-  name: string;
-  price: number;
-  qty: number;
-}
-
-interface Order {
-  id: string;
-  items: OrderItem[];
-  total: number;
-  status: string;
-  created_at: number;
-}
-
-interface QRSession {
-  id: string;
-  table_number?: string;
-  created_at: number;
-  updated_at: number;
-  has_order: boolean;
-  order?: Order;
-}
-
-interface SessionsResponse {
-  sessions: QRSession[];
-}
 
 const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
-  const [sessions, setSessions] = useState<QRSession[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    fetchSessions();
-    
-    // Set up polling every 5 seconds for admin dashboard
-    const interval = setInterval(fetchSessions, 5000);
-    
-    return () => clearInterval(interval);
-  }, []);
-
-  const fetchSessions = async () => {
-    try {
-      const response = await fetch(api.adminSessions());
-      
-      if (!response.ok) {
-        throw new Error(`Failed to fetch sessions: ${response.statusText}`);
-      }
-      
-      const data: SessionsResponse = await response.json();
-      setSessions(data.sessions);
-      setError(null);
-    } catch (err) {
-      console.error('Error fetching sessions:', err);
-      setError(err instanceof Error ? err.message : 'Failed to load sessions');
-    } finally {
-      setLoading(false);
-    }
-  };
+  
+  // Use TanStack Query hook for sessions with automatic polling
+  const { data: sessions = [], isLoading, error, refetch } = useAdminSessions();
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('es-MX', {
@@ -99,7 +44,7 @@ const AdminDashboard: React.FC = () => {
     return 'Orden activa';
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="container mx-auto px-4">
         <div className="bg-white rounded-lg shadow-md p-6">
@@ -115,10 +60,10 @@ const AdminDashboard: React.FC = () => {
       <div className="container mx-auto px-4">
         <div className="bg-white rounded-lg shadow-md p-6">
           <h2 className="text-xl font-semibold mb-2 text-red-600">Error en Dashboard</h2>
-          <p className="text-gray-600 mb-4">{error}</p>
+          <p className="text-gray-600 mb-4">{error instanceof Error ? error.message : 'Failed to load sessions'}</p>
           <button 
             className="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded-md transition-colors duration-200" 
-            onClick={fetchSessions}
+            onClick={() => refetch()}
           >
             🔄 Reintentar
           </button>
@@ -166,7 +111,7 @@ const AdminDashboard: React.FC = () => {
             </a> */}
             
             {/* <button
-              onClick={fetchSessions}
+              onClick={() => refetch()}
               className="btn"
               style={{ 
                 backgroundColor: '#28a745', 
@@ -269,3 +214,4 @@ const AdminDashboard: React.FC = () => {
 };
 
 export default Sentry.withProfiler(AdminDashboard);
+

@@ -3,6 +3,8 @@ import ReactDOM from 'react-dom/client';
 import './index.css';
 import App from './App';
 import * as Sentry from "@sentry/react";
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 
 Sentry.init({
   dsn: "https://c9c670e4a82008eb7f2d7bcbc3741f50@o4510028336922624.ingest.us.sentry.io/4510028338429952",
@@ -29,9 +31,23 @@ Sentry.init({
   ],
 });
 
+// Create a QueryClient instance
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      refetchOnWindowFocus: false, // Disable refetch on window focus for better UX in restaurant setting
+      retry: 1, // Retry failed requests once
+      staleTime: 1000 * 60 * 5, // Data is fresh for 5 minutes by default
+    },
+  },
+});
+
 const root = ReactDOM.createRoot(document.getElementById('root') as HTMLElement);
 root.render(
   <React.StrictMode>
-    <App />
+    <QueryClientProvider client={queryClient}>
+      <App />
+      <ReactQueryDevtools initialIsOpen={false} />
+    </QueryClientProvider>
   </React.StrictMode>
 );
