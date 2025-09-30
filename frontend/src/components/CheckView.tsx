@@ -11,12 +11,18 @@ interface RouteParams {
   orderId: string; // This is actually the QR-ID now
 }
 
+interface Topping {
+  name: string;
+  price: number;
+}
+
 interface OrderItem {
   id: string;
   menuId: string;
   name: string;
   price: number;
   qty: number;
+  toppings?: Topping[];
 }
 
 interface Order {
@@ -172,7 +178,10 @@ const CheckView: React.FC = () => {
         }
         return selectedItems.has(item.menuId);
       })
-      .reduce((total, item) => total + (item.price * item.qty), 0);
+      .reduce((total, item) => {
+        const toppingsPrice = item.toppings?.reduce((sum, t) => sum + t.price, 0) || 0;
+        return total + ((item.price + toppingsPrice) * item.qty);
+      }, 0);
   };
 
   // const calculateRemainingBalance = () => {

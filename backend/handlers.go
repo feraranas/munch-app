@@ -33,32 +33,76 @@ type MenuSelectionRequest struct {
 }
 
 type SelectedItem struct {
-	ID     string `json:"id"`     // item ID
-	MenuID string `json:"menuId"` // Specific item ID from selection
-	Qty    int    `json:"qty"`    // Quantity
+	ID       string    `json:"id"`                 // item ID
+	MenuID   string    `json:"menuId"`             // Specific item ID from selection
+	Qty      int       `json:"qty"`                // Quantity
+	Toppings []Topping `json:"toppings,omitempty"` // Selected toppings
 }
 
-type OrderItem struct {
-	ID     string  `json:"id"`
-	MenuID string  `json:"menuId"`
-	Name   string  `json:"name"`
-	Price  float64 `json:"price"`
-	Qty    int     `json:"qty"`
-}
-
-type MenuItem struct {
-	ID    string  `json:"id"`
+type Topping struct {
 	Name  string  `json:"name"`
 	Price float64 `json:"price"`
 }
 
+type OrderItem struct {
+	ID       string    `json:"id"`
+	MenuID   string    `json:"menuId"`
+	Name     string    `json:"name"`
+	Price    float64   `json:"price"`
+	Qty      int       `json:"qty"`
+	Toppings []Topping `json:"toppings,omitempty"`
+}
+
+type MenuItem struct {
+	ID       string    `json:"id"`
+	Name     string    `json:"name"`
+	Price    float64   `json:"price"`
+	Toppings []Topping `json:"toppings,omitempty"`
+}
+
 // Available menu items for the restaurant
 var availableMenuItems = []MenuItem{
-	{ID: "tacos_pastor", Name: "Tacos al Pastor (3)", Price: 12.99},
+	{
+		ID:    "tacos_pastor",
+		Name:  "Tacos al Pastor (3)",
+		Price: 12.99,
+		Toppings: []Topping{
+			{Name: "Extra Piña", Price: 1.50},
+			{Name: "Guacamole", Price: 2.00},
+			{Name: "Crema", Price: 0.75},
+		},
+	},
 	{ID: "enchiladas_verdes", Name: "Enchiladas Verdes", Price: 14.99},
-	{ID: "tacos_carnitas", Name: "Tacos de Carnitas (3)", Price: 11.99},
-	{ID: "burrito_pollo", Name: "Burrito de Pollo", Price: 13.99},
-	{ID: "quesadilla_queso", Name: "Quesadilla de Queso", Price: 9.99},
+	{
+		ID:    "tacos_carnitas",
+		Name:  "Tacos de Carnitas (3)",
+		Price: 11.99,
+		Toppings: []Topping{
+			{Name: "Guacamole", Price: 2.00},
+			{Name: "Crema", Price: 0.75},
+			{Name: "Queso Extra", Price: 1.25},
+		},
+	},
+	{
+		ID:    "burrito_pollo",
+		Name:  "Burrito de Pollo",
+		Price: 13.99,
+		Toppings: []Topping{
+			{Name: "Guacamole", Price: 2.00},
+			{Name: "Queso Extra", Price: 1.25},
+			{Name: "Jalapeños", Price: 0.50},
+		},
+	},
+	{
+		ID:    "quesadilla_queso",
+		Name:  "Quesadilla de Queso",
+		Price: 9.99,
+		Toppings: []Topping{
+			{Name: "Hongos", Price: 1.50},
+			{Name: "Rajas", Price: 1.00},
+			{Name: "Queso Extra", Price: 1.25},
+		},
+	},
 	{ID: "cerveza_corona", Name: "Cerveza Corona", Price: 4.50},
 	{ID: "cerveza_modelo", Name: "Cerveza Modelo", Price: 4.50},
 	{ID: "agua_horchata", Name: "Agua de Horchata", Price: 3.99},
@@ -323,15 +367,22 @@ func (app *App) updateOrder(c *gin.Context) {
 					continue // Skip items with zero or negative quantity
 				}
 
+				// Calculate item price including toppings
+				itemPrice := menuItem.Price
+				for _, topping := range selectedItem.Toppings {
+					itemPrice += topping.Price
+				}
+
 				orderItem := OrderItem{
-					ID:     menuItem.ID,
-					MenuID: selectedItem.MenuID,
-					Name:   menuItem.Name,
-					Price:  menuItem.Price,
-					Qty:    selectedItem.Qty,
+					ID:       menuItem.ID,
+					MenuID:   selectedItem.MenuID,
+					Name:     menuItem.Name,
+					Price:    menuItem.Price,
+					Qty:      selectedItem.Qty,
+					Toppings: selectedItem.Toppings,
 				}
 				orderItems = append(orderItems, orderItem)
-				total += menuItem.Price
+				total += itemPrice
 
 				break
 			}
@@ -419,16 +470,23 @@ func (app *App) POSOrder(c *gin.Context) {
 					return
 				}
 
-				orderItem := OrderItem{
-					ID:     menuItem.ID,
-					MenuID: selectedItem.MenuID,
-					Name:   menuItem.Name,
-					Price:  menuItem.Price,
-					Qty:    selectedItem.Qty,
+				// Calculate item price including toppings
+				itemPrice := menuItem.Price
+				for _, topping := range selectedItem.Toppings {
+					itemPrice += topping.Price
 				}
-				fmt.Printf("🔍 DEBUG POSOrder: Created OrderItem - ID: %s, MenuID: %s, Name: %s\n", orderItem.ID, orderItem.MenuID, orderItem.Name)
+
+				orderItem := OrderItem{
+					ID:       menuItem.ID,
+					MenuID:   selectedItem.MenuID,
+					Name:     menuItem.Name,
+					Price:    menuItem.Price,
+					Qty:      selectedItem.Qty,
+					Toppings: selectedItem.Toppings,
+				}
+				fmt.Printf("🔍 DEBUG POSOrder: Created OrderItem - ID: %s, MenuID: %s, Name: %s, Toppings: %d\n", orderItem.ID, orderItem.MenuID, orderItem.Name, len(orderItem.Toppings))
 				orderItems = append(orderItems, orderItem)
-				total += menuItem.Price * float64(selectedItem.Qty)
+				total += itemPrice * float64(selectedItem.Qty)
 
 				break
 			}
