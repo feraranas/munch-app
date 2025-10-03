@@ -429,7 +429,7 @@ func (app *App) updateOrder(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
-// POS Mock API endpoint - creates order from waitstaff menu selection and links to QR session
+// Creates order from waitstaff menu selection and links to QR session
 func (app *App) POSOrder(c *gin.Context) {
 	var req MenuSelectionRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
