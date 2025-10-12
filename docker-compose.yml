@@ -131,6 +131,7 @@ services:
     image: grafana/grafana:main-ubuntu
     volumes:
       - ./configs/grafana.yaml:/etc/grafana/provisioning/datasources/datasources.yaml
+      - grafana_data:/var/lib/grafana
     ports:
       - "3001:3001"
     environment:
@@ -142,3 +143,4 @@ services:
 
 volumes:
   postgres_data:
+  grafana_data:
