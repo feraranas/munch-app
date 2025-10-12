@@ -7,18 +7,18 @@ echo "Setting up environment variables for Munch App..."
 echo "Creating frontend .env file..."
 cat > frontend/.env << EOF
 # Frontend Environment Configuration
-REACT_APP_API_URL=http://localhost:8081
-REACT_APP_WS_URL=ws://localhost:8081
-REACT_APP_FRONTEND_URL=http://localhost:3001
+REACT_APP_API_URL=http://localhost:8080
+REACT_APP_WS_URL=ws://localhost:8080
+REACT_APP_FRONTEND_URL=http://localhost:3000
 EOF
 
 # Create backend .env file
 echo "Creating backend .env file..."
 cat > backend/.env << EOF
 # Backend Environment Configuration
-API_PORT=8081
-FRONTEND_URL=http://localhost:3001
-API_URL=http://localhost:8081
+API_PORT=8080
+FRONTEND_URL=http://localhost:3000
+API_URL=http://localhost:8080
 EOF
 
 echo "Environment files created successfully!"
