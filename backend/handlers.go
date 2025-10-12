@@ -290,7 +290,8 @@ func (app *App) getAllQRSessions(c *gin.Context) {
 	}
 
 	// Build response with order details for each session
-	var response []map[string]interface{}
+	// Initialize as empty slice to ensure JSON returns [] instead of null when empty
+	response := make([]map[string]interface{}, 0)
 
 	for _, session := range sessions {
 		sessionData := map[string]interface{}{
