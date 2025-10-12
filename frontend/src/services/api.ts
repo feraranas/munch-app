@@ -73,7 +73,8 @@ export const fetchAllSessions = async (): Promise<QRSession[]> => {
     throw new Error(`Failed to fetch sessions: ${response.statusText}`);
   }
   const data: SessionsResponse = await response.json();
-  return data.sessions;
+  // Defensive check: return empty array if sessions is null/undefined
+  return data.sessions || [];
 };
 
 export const fetchQRSession = async (qrId: string): Promise<QRSessionResponse> => {

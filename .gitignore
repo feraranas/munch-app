@@ -40,6 +40,10 @@ Thumbs.db
 # Logs
 *.log
 
+# Docker volumes and data
+data/
+promtail/docker_volumes/
+
 # Editor
 .history
 foundations/
