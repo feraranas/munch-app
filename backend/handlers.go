@@ -291,6 +291,7 @@ func (app *App) getAllQRSessions(c *gin.Context) {
 
 	// Build response with order details for each session
 	var response []map[string]interface{}
+
 	for _, session := range sessions {
 		sessionData := map[string]interface{}{
 			"id":           session.ID,

@@ -15,7 +15,7 @@ A QR code-based restaurant bill splitting application.
 ./setup-env.sh
 ```
 
-This creates the necessary environment files for both frontend and backend with the correct ports (8081 for backend, 3001 for frontend).
+This creates the necessary environment files for both frontend and backend with the correct ports (8080 for backend, 3000 for frontend).
 
 ### Run script to test repository health
 
@@ -34,7 +34,7 @@ make run
 go run .
 ```
 
-The backend will start on `http://localhost:8081`
+The backend will start on `http://localhost:8080`
 
 ### Frontend Setup
 
@@ -92,4 +92,5 @@ docker-compose up frontend
 ### Build and start all services at once
 ```bash
 docker-compose up --build
+docker-compose up --force-recreate
 ```
