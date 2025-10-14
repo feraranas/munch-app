@@ -1,5 +1,24 @@
 import { api } from '../config/environment';
 
+// Helper to get auth token
+const getAuthToken = (): string | null => {
+  return localStorage.getItem('auth_token');
+};
+
+// Helper to create headers with auth token
+const getAuthHeaders = (): HeadersInit => {
+  const token = getAuthToken();
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json',
+  };
+  
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  
+  return headers;
+};
+
 // Types
 export interface MenuItem {
   id: string;
@@ -68,7 +87,9 @@ export const fetchMenuItems = async (): Promise<MenuItem[]> => {
 };
 
 export const fetchAllSessions = async (): Promise<QRSession[]> => {
-  const response = await fetch(api.adminSessions());
+  const response = await fetch(api.adminSessions(), {
+    headers: getAuthHeaders(),
+  });
   if (!response.ok) {
     throw new Error(`Failed to fetch sessions: ${response.statusText}`);
   }
@@ -89,9 +110,7 @@ export const fetchQRSession = async (qrId: string): Promise<QRSessionResponse> =
 export const createPOSOrder = async (payload: CreateOrderPayload): Promise<any> => {
   const response = await fetch(api.posOrder(), {
     method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: getAuthHeaders(),
     body: JSON.stringify(payload),
   });
 
@@ -106,9 +125,7 @@ export const createPOSOrder = async (payload: CreateOrderPayload): Promise<any> 
 export const updateOrder = async (payload: any): Promise<any> => {
   const response = await fetch(api.updateOrder(), {
     method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-    },
+    headers: getAuthHeaders(),
     body: JSON.stringify(payload),
   });
 

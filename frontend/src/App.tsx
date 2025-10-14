@@ -6,6 +6,9 @@ import QRGenerator from './components/QRGenerator';
 import WaitstaffMenu from './components/WaitstaffMenu';
 import AdminDashboard from './components/AdminDashboard';
 import BottomNavBar from './components/BottomNavBar';
+import LoginPage from './components/LoginPage';
+import ProtectedRoute from './components/ProtectedRoute';
+import { AuthProvider } from './contexts/AuthContext';
 import * as Sentry from "@sentry/react";
 import POSView from './components/POSView';
 import MenuView from './components/MenuView';
@@ -32,28 +35,52 @@ const router = createBrowserRouter([
         element: <LandingPage />,
       },
       {
+        path: "login",
+        element: <LoginPage />,
+      },
+      {
         path: "check/:orderId",
         element: <CheckView />,
       },
       {
         path: "admin/qr",
-        element: <QRGenerator />,
+        element: (
+          <ProtectedRoute>
+            <QRGenerator />
+          </ProtectedRoute>
+        ),
       },
       {
         path: "admin/pos",
-        element: <WaitstaffMenu />,
+        element: (
+          <ProtectedRoute>
+            <WaitstaffMenu />
+          </ProtectedRoute>
+        ),
       },
       {
         path: "admin",
-        element: <AdminDashboard />,
+        element: (
+          <ProtectedRoute>
+            <AdminDashboard />
+          </ProtectedRoute>
+        ),
       },
       {
         path: "admin/table/:tableId/pos",
-        element: <POSView />,
+        element: (
+          <ProtectedRoute>
+            <POSView />
+          </ProtectedRoute>
+        ),
       },
       {
         path: "admin/table/:tableId/menu",
-        element: <MenuView />,
+        element: (
+          <ProtectedRoute>
+            <MenuView />
+          </ProtectedRoute>
+        ),
       },
     ],
   },
@@ -63,7 +90,11 @@ const router = createBrowserRouter([
 const SentryRouter = Sentry.withSentryRouting(RouterProvider);
 
 const App: React.FC = () => {
-  return <SentryRouter router={router} />;
+  return (
+    <AuthProvider>
+      <SentryRouter router={router} />
+    </AuthProvider>
+  );
 };
 
 export default App;

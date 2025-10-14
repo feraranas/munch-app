@@ -3,13 +3,26 @@ import { useNavigate } from 'react-router-dom';
 import * as Sentry from '@sentry/react';
 import { useAdminSessions } from '../hooks/useQueries';
 import { QRSession } from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 import Logo from './Logo';
 
 const AdminDashboard: React.FC = () => {
   const navigate = useNavigate();
+  const { user, logout } = useAuth();
   
   // Use TanStack Query hook for sessions with automatic polling
   const { data: sessions = [], isLoading, error, refetch } = useAdminSessions();
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      navigate('/login');
+    } catch (error) {
+      console.error('Logout failed:', error);
+      // Still navigate to login even if logout API fails
+      navigate('/login');
+    }
+  };
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('es-MX', {
@@ -81,6 +94,21 @@ const AdminDashboard: React.FC = () => {
             <h2 className="ml-3 text-2xl font-semibold text-gray-800">Dashboard</h2>
           </div>
           
+          <div className="flex items-center gap-3">
+            {user && (
+              <div className="text-sm text-gray-600">
+                <span className="font-medium">{user.username}</span>
+              </div>
+            )}
+            <button
+              onClick={handleLogout}
+              className="px-3 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors duration-200"
+            >
+              Cerrar Sesión
+            </button>
+          </div>
+        </div>
+          
           {/* <div style={{ display: 'flex', gap: '10px' }}>   */}
             {/* <a 
               href="/admin/qr"
@@ -124,7 +152,6 @@ const AdminDashboard: React.FC = () => {
             </button> */}
 
           {/* </div> */}
-        </div>
 
         {/* <div style={{ marginBottom: '20px' }}>
           <div style={{ display: 'flex', gap: '20px', marginBottom: '15px' }}> */}
@@ -171,7 +198,7 @@ const AdminDashboard: React.FC = () => {
                          hover:shadow-md"
             >
               {/* Status badge in top-right corner */}
-              <div className={`absolute top-0 right-0 px-3 py-1 text-xs font-medium rounded-bl-3xl shadow-md shadow-sm ${getStatusColor(session)}`}>
+              <div className={`absolute top-0 right-0 px-3 py-1 text-xs font-medium rounded-bl-3xl shadow-md ${getStatusColor(session)}`}>
                 {getStatusText(session)}
               </div>
 

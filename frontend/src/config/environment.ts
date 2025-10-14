@@ -25,6 +25,7 @@ export const config = getConfig();
 // Helper functions for common API calls
 export const api = {
   baseUrl: config.apiUrl,
+  base: () => `${config.apiUrl}/api`,
   
   // API endpoints
   qr: (orderId: string) => `${config.apiUrl}/api/qr/${orderId}`,
