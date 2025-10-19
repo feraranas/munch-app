@@ -27,23 +27,7 @@ type App struct {
 	Logger zerolog.Logger
 }
 
-type QRSession struct {
-	ID           string  `json:"id" gorm:"primaryKey"`           // QR-ID (persistent)
-	QRImageData  string  `json:"qr_image_data" gorm:"type:text"` // Base64 QR image
-	CurrentOrder *string `json:"current_order,omitempty"`        // Current active order ID
-	TableNumber  *string `json:"table_number,omitempty"`         // Optional table identifier
-	CreatedAt    int64   `json:"created_at" gorm:"autoCreateTime"`
-	UpdatedAt    int64   `json:"updated_at" gorm:"autoUpdateTime"`
-}
-
-type Order struct {
-	ID        string  `json:"id" gorm:"primaryKey"`
-	QRSession string  `json:"qr_session"`             // Links to QRSession.ID
-	Items     string  `json:"items" gorm:"type:text"` // JSON string for now
-	Total     float64 `json:"total"`
-	Status    string  `json:"status"` // open, paid, closed
-	CreatedAt int64   `json:"created_at" gorm:"autoCreateTime"`
-}
+// Models are now defined in models.go
 
 func main() {
 	// Setup zerolog - the "Hello World" of zerolog
@@ -111,7 +95,7 @@ func (app *App) initDB() error {
 	app.Logger.Info().Str("database_url", app.Config.DatabaseURL).Msg("Connected to database")
 
 	// Auto migrate the schema
-	return app.DB.AutoMigrate(&QRSession{}, &Order{})
+	return app.DB.AutoMigrate(&StaffUser{}, &QRSession{}, &Order{})
 }
 
 func (app *App) initRouter() {
@@ -131,17 +115,31 @@ func (app *App) initRouter() {
 	corsConfig.AllowCredentials = true
 	app.Router.Use(cors.New(corsConfig))
 
-	// Routes
+	// Auth routes (public)
+	auth := app.Router.Group("/api/auth")
+	{
+		auth.POST("/login", app.login)
+		auth.POST("/logout", app.logout)
+		auth.GET("/validate", app.validateToken)
+	}
+
+	// Public routes (no authentication required)
 	api := app.Router.Group("/api")
 	{
-		api.POST("/qr/create", app.createQRSession)
-		api.GET("/qr/:qrId", app.getOrderByQR)
-		api.GET("/orders/:id", app.getOrder)
-		api.POST("/orders", app.createOrder)
-		api.GET("/menu/items", app.getMenuItems)
-		api.POST("/pos/order", app.POSOrder)
-		api.PUT("/orders/update", app.updateOrder)
-		api.GET("/admin/sessions", app.getAllQRSessions)
+		api.GET("/qr/:qrId", app.getOrderByQR)   // Clients need this
+		api.GET("/orders/:id", app.getOrder)     // Clients need this
+		api.GET("/menu/items", app.getMenuItems) // Clients need this
+	}
+
+	// Protected routes (authentication required)
+	protected := app.Router.Group("/api")
+	protected.Use(app.authMiddleware())
+	{
+		protected.POST("/qr/create", app.createQRSession)
+		protected.POST("/orders", app.createOrder)
+		protected.POST("/pos/order", app.POSOrder)
+		protected.PUT("/orders/update", app.updateOrder)
+		protected.GET("/admin/sessions", app.getAllQRSessions)
 	}
 
 	// Websocket routes

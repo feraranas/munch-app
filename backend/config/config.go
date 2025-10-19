@@ -12,6 +12,7 @@ type Config struct {
 	APIURL       string
 	DatabaseURL  string
 	DatabaseType string // "sqlite" or "postgres"
+	JWTSecret    string // Secret key for JWT token signing
 }
 
 // LoadConfig loads configuration from environment variables with defaults
@@ -22,6 +23,7 @@ func LoadConfig() *Config {
 		APIURL:       "http://localhost:8080",
 		DatabaseType: "postgres",
 		DatabaseURL:  "postgres://munch_user:munch_password@localhost:5432/munch_app_dev?sslmode=disable",
+		JWTSecret:    "munch-app-secret-change-in-production",
 	}
 
 	// Load from environment variables if they exist
@@ -45,6 +47,10 @@ func LoadConfig() *Config {
 
 	if dbURL := os.Getenv("DATABASE_URL"); dbURL != "" {
 		config.DatabaseURL = dbURL
+	}
+
+	if jwtSecret := os.Getenv("JWT_SECRET"); jwtSecret != "" {
+		config.JWTSecret = jwtSecret
 	}
 
 	return config

@@ -1,6 +1,5 @@
-import React from 'react';
+import React, { useState } from 'react';
 import * as Sentry from '@sentry/react';
-import SentryHelloWorldButtons from './SentryHelloWorld';
 import Logo from './Logo';
 
 const LandingPage: React.FC = () => {
@@ -17,13 +16,18 @@ const LandingPage: React.FC = () => {
         <div className="text-center mt-8">
           <h2>🍽️</h2>
           <p>Para ver tu cuenta, escanea el QR de tu mesa.</p>
-          <p className="text-gray-500 text-sm">
-            Personal: <strong><a href="/admin" className="text-blue-600 hover:text-blue-800">/admin</a></strong> (dashboard) • <strong><a href="/admin/pos" className="text-blue-600 hover:text-blue-800">/admin/pos</a></strong> (órdenes) • <strong><a href="/admin/qr" className="text-blue-600 hover:text-blue-800">/admin/qr</a></strong> (generar QR)
-          </p>
+          
+          <div className="mt-6">
+            <a
+              href="/login"
+              className="inline-block px-6 py-3 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg transition-colors duration-200"
+            >
+              Acceso de Personal
+            </a>
+          </div>
         </div>
       </div>
-      <SentryHelloWorldButtons />
-    </div>
+    </div>  
   );
 };
 
