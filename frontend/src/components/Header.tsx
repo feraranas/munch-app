@@ -4,9 +4,23 @@ import GrapesLogo from './GrapesLogo';
 
 interface HeaderProps {
   title: string;
+  showUserInfo?: boolean;
+  showLogo?: boolean;
+  onBackClick?: () => void;
+  statusBadge?: {
+    text: string;
+    colorClass: string;
+    size?: 'sm' | 'md' | 'lg';
+  };
 }
 
-const Header: React.FC<HeaderProps> = ({ title }) => {
+const Header: React.FC<HeaderProps> = ({ 
+  title, 
+  showUserInfo = true, 
+  showLogo = true,
+  onBackClick,
+  statusBadge 
+}) => {
   const { user } = useAuth();
 
   const getCurrentDate = () => {
@@ -19,18 +33,72 @@ const Header: React.FC<HeaderProps> = ({ title }) => {
     ).join(' ');
   };
 
+  const getStatusBadgeSizeClasses = (size?: 'sm' | 'md' | 'lg') => {
+    switch (size) {
+      case 'sm':
+        return 'px-2 py-0.5 text-xs';
+      case 'lg':
+        return 'px-4 py-2 text-base';
+      case 'md':
+      default:
+        return 'px-3 py-1 text-sm';
+    }
+  };
+
+  // POSView mode (with back button and status badge)
+  if (onBackClick || statusBadge) {
+    return (
+      <div className="bg-gray-50">
+        <div className="container mx-auto px-4">
+          <div className="grid grid-cols-3 items-center py-4 gap-4">
+            {/* Left: Back button + Logo + Title */}
+            <div className="flex items-center justify-start gap-3">
+              {onBackClick && (
+                <button
+                  onClick={onBackClick}
+                  className="bg-transparent border-none cursor-pointer hover:bg-gray-200 rounded p-1 transition-colors duration-200"
+                >
+                  <svg width="15" height="20" viewBox="0 0 15 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12.5 2.5L5 10L12.5 17.5" stroke="#000000" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                  </svg>
+                </button>
+              )}
+              {showLogo && <GrapesLogo width={32} height={32} />}
+              <h1 className="m-0 text-xl font-semibold text-gray-800">{title}</h1>
+            </div>
+
+            {/* Center: Status badge */}
+            <div className="flex justify-center">
+              {statusBadge && (
+                <div className={`rounded-sm text-white font-medium text-center ${getStatusBadgeSizeClasses(statusBadge.size)} ${statusBadge.colorClass}`}>
+                  {statusBadge.text}
+                </div>
+              )}
+            </div>
+
+            {/* Right: Empty space for grid balance */}
+            <div></div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Dashboard mode (with logo, username, and date)
   return (
-    <div className="bg-gray-50 ">
+    <div className="bg-gray-50">
       <div className="container mx-auto px-6 py-6">
         <div className="flex justify-between items-start">
           <div className="flex items-start gap-5 w-full">
-            <GrapesLogo width={48} height={48} />
+            {showLogo && <GrapesLogo width={48} height={48} />}
             <div className="flex-1">
               <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
-              <div className='flex justify-between items-center w-full'>
-                <p className="text-lg text-gray-500">{user?.username || 'Fernando'}</p>
-                <p className="text-md text-gray-500">{getCurrentDate()}</p>
-              </div>
+              {showUserInfo && (
+                <div className='flex justify-between items-center w-full'>
+                  <p className="text-lg text-gray-500">{user?.username || 'Fernando'}</p>
+                  <p className="text-md text-gray-500">{getCurrentDate()}</p>
+                </div>
+              )}
             </div>
           </div>
         </div>
