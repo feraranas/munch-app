@@ -16,6 +16,7 @@ interface AuthContextType {
   logout: () => Promise<void>;
 }
 
+// This creates a container for the authentication data.
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 interface AuthProviderProps {
