@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import Logo from './Logo';
+import GrapesLogo from './GrapesLogo';
 import * as Sentry from '@sentry/react';
 
 const LoginPage: React.FC = () => {
@@ -43,14 +43,14 @@ const LoginPage: React.FC = () => {
       <div className="max-w-md w-full space-y-8">
         <div>
           <div className="flex justify-center">
-            <Logo width={80} height={80} />
+            <GrapesLogo width={80} height={80} />
           </div>
           <h2 className="mt-6 text-center text-3xl font-bold text-gray-900">
-            Acceso de Personal
+            Entra
           </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
+          {/* <p className="mt-2 text-center text-sm text-gray-600">
             Ingresa tus credenciales para continuar
-          </p>
+          </p> */}
         </div>
         
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
@@ -143,12 +143,6 @@ const LoginPage: React.FC = () => {
           </div>
         </form>
 
-        <div className="mt-6 p-4 bg-blue-50 rounded-md">
-          <p className="text-xs text-gray-600 text-center">
-            Credenciales por defecto para desarrollo:<br />
-            <span className="font-mono font-semibold">admin / admin123</span>
-          </p>
-        </div>
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import * as Sentry from '@sentry/react';
 import { useQRSession, useMenuItems, useCreateOrder } from '../hooks/useQueries';
@@ -31,14 +31,16 @@ const POSView: React.FC = () => {
   const createOrderMutation = useCreateOrder();
 
   // Convert QRSessionResponse to QRSession format
-  const session: QRSession | null = sessionData ? {
-    id: sessionData.qr_id,
-    table_number: sessionData.table_number,
-    has_order: sessionData.has_order,
-    order: sessionData.order,
-    created_at: 0, // Not provided by API, using default
-    updated_at: 0, // Not provided by API, using default
-  } : null;
+  const session: QRSession | null = useMemo(() => {
+    return sessionData ? {
+      id: sessionData.qr_id,
+      table_number: sessionData.table_number,
+      has_order: sessionData.has_order,
+      order: sessionData.order,
+      created_at: 0, // Not provided by API, using default
+      updated_at: 0, // Not provided by API, using default
+    } : null;
+  }, [sessionData]);
 
   // Initialize orderItems from session data when it loads
   useEffect(() => {

@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import * as Sentry from '@sentry/react';
-import Logo from './Logo';
+import GrapesLogo from './GrapesLogo';
 
 const LandingPage: React.FC = () => {
   return (
     <div className="container">
       <div className="card">
         <div className="flex items-center justify-center mb-6">
-          <Logo width={80} height={80} className="mr-4" />
+          <GrapesLogo width={80} height={80} className="mr-4" />
           <div>
             <p className="text-gray-600">Paga tu cuenta!</p>
           </div>

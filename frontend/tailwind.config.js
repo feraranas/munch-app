@@ -6,8 +6,8 @@ module.exports = {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Figtree', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
-        serif: ['Georgia', 'Times New Roman', 'serif'],
+        sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
+        serif: ['Playfair Display', 'Georgia', 'Times New Roman', 'serif'],
         mono: ['source-code-pro', 'Menlo', 'Monaco', 'Consolas', 'Courier New', 'monospace'],
       },
       colors: {
@@ -23,6 +23,9 @@ module.exports = {
           dark: '#B30016',
           50: 'rgba(224, 0, 27, 0.05)',
           100: 'rgba(224, 0, 27, 0.1)',
+        },
+        sky: {
+          DEFAULT: '#56ACEE',
         },
         neutral: {
           50: '#FAFAFA',
