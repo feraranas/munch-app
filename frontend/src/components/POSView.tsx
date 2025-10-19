@@ -5,7 +5,7 @@ import { useQRSession, useMenuItems, useCreateOrder } from '../hooks/useQueries'
 import { QRSession } from '../services/api';
 import OrderItemsList, { MenuItem, OrderItem, Topping } from './OrderItemsList';
 import ModalSheet from './ModalSheet';
-import LessThanIcon from './LessThanIcon';
+import Header from './Header';
 
 interface RouteParams {
   tableId: string;
@@ -49,10 +49,6 @@ const POSView: React.FC = () => {
     }
   }, [session]);
 
-  const handleSessionClick = (session: QRSession) => {
-    navigate(`/admin/table/${session.id}/menu`);
-  };
-
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('es-MX', {
       style: 'currency',
@@ -61,10 +57,10 @@ const POSView: React.FC = () => {
   };
 
   const getStatusColor = (session: QRSession) => {
-    if (!session.has_order) return 'bg-gray-500'; // Gray for no order
-    if (session.order?.status === 'paid') return 'bg-green-500'; // Green for paid
-    return 'bg-blue-500'; // Blue for active order
-  };
+    if (!session.has_order) return 'bg-gray-100 text-gray-600'; // Gray for no order
+    if (session.order?.status === 'paid') return 'bg-green-500 text-white'; // Green for paid
+    return 'bg-sky text-white'; // Blue for active order
+};
 
   const getStatusText = (session: QRSession) => {
     if (!session.has_order) return 'Sin orden';
@@ -196,45 +192,26 @@ const POSView: React.FC = () => {
   return (
     <div className="h-screen flex flex-col">
       {/* Fixed Header Section */}
-      <div className="flex-shrink-0 bg-gray-100">
-        <div className="container mx-auto px-4">
-          {/* Header with table number and status */}
-          <div className="grid grid-cols-3 items-center py-2 gap-4">
-            <div className="flex items-center justify-start">
-              <button
-                onClick={() => navigate('/admin')}
-                className="bg-transparent border-none cursor-pointer mr-3 hover:bg-gray-100 rounded transition-colors duration-200"
-              >
-                <LessThanIcon
-                  width={15}
-                  height={20}
-                  fill="#000000" 
-                  className="flex-shrink-0"
-                />
-              </button>
-              <h1 className="m-0 text-xl font-semibold text-gray-800">
-                {session.table_number || `Mesa ${session.id.slice(0, 8)}`}
-              </h1>
-            </div>
-
-            <div className="flex justify-center">
-              <div className={`px-2 py-1 rounded-sm text-white text-sm font-medium text-center ${getStatusColor(session)}`}>
-                {getStatusText(session)}
-              </div>
-            </div>
-
-            <div className="flex justify-end">
-              {getStatusText(session) === 'Orden activa' && (
-                <button
-                  className='px-2 py-1 rounded-sm text-black text-sm font-medium bg-gray-500'
-                  onClick={() => handleSessionClick(session)}
-                >
-                  Ver orden completa
-                </button>
-              )}
-            </div>
+      <div className="flex-shrink-0">
+        <div className="bg-gray-50">
+          <Header 
+            title={session.table_number || `Mesa ${session.id.slice(0, 8)}`}
+            onBackClick={() => navigate('/admin')}
+            statusBadge={{
+              text: getStatusText(session),
+              colorClass: getStatusColor(session),
+              size: 'sm'
+            }}
+            showUserInfo={false}
+            showLogo={true}
+          />
+          
+          {/* Menu Title - Overlapping below status badge */}
+          <div className="flex justify-center -mt-8">
+            <h2 className="text-lg font-semibold text-gray-800 m-0">
+              Menú
+            </h2>
           </div>
-
         </div>
       </div>
 
@@ -245,9 +222,6 @@ const POSView: React.FC = () => {
 
             {/* Available Menu Items */}
             <div>
-              <div className="text-lg font-semibold mb-4 text-gray-800">
-                Menú Disponible
-              </div>
               <OrderItemsList
                 items={menuItems}
                 formatPrice={formatPrice}
