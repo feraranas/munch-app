@@ -48,7 +48,7 @@ const Header: React.FC<HeaderProps> = ({
   // POSView mode (with back button and status badge)
   if (onBackClick || statusBadge) {
     return (
-      <div className="bg-gray-50">
+      <div className="bg-white border-b border-gray-200 shadow-sm">
         <div className="container mx-auto px-4">
           <div className="grid grid-cols-3 items-center py-4 gap-4">
             {/* Left: Back button + Logo + Title */}
@@ -86,7 +86,7 @@ const Header: React.FC<HeaderProps> = ({
 
   // Dashboard mode (with logo, username, and date)
   return (
-    <div className="bg-gray-50">
+    <div className="bg-white border-b border-gray-200 shadow-sm">
       <div className="container mx-auto px-6 py-6">
         <div className="flex justify-between items-start">
           <div className="flex items-start gap-5 w-full">
