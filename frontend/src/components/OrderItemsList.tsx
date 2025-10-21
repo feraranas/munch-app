@@ -77,8 +77,11 @@ const OrderItemsList: React.FC<OrderItemsListProps> = React.memo(({
         const isSelectedByOther = selectedByUserId && !isSelectedByMe;
         
         // Find current quantity for this menu item in cart (for menu mode)
+        // Sum up all quantities for items with the same id
         const currentQuantity = mode === 'menu' 
-          ? orderItems.find(orderItem => orderItem.id === item.id)?.qty || 0
+          ? orderItems
+              .filter(orderItem => orderItem.id === item.id)
+              .reduce((total, orderItem) => total + orderItem.qty, 0)
           : 0;
         
         const orderItem = item as OrderItem;
@@ -95,7 +98,7 @@ const OrderItemsList: React.FC<OrderItemsListProps> = React.memo(({
                 }
               }}
               className={`
-                flex justify-between items-center py-3 my-0 transition-colors duration-200
+                flex justify-between items-center py-2 my-0 transition-colors duration-200
                 ${mode === 'order' 
                   ? isSelectedByMe 
                     ? 'border-l-4 border-green-500' 
@@ -110,21 +113,21 @@ const OrderItemsList: React.FC<OrderItemsListProps> = React.memo(({
             >
               <div className="flex items-center">
                 
-                {/* Quantity - only show for order items */}
-                {mode === 'order' && (
-                  <span className="text-gray-600 pr-4 text-sm mr-3 w-4 text-center">
-                    <div className="ml-2 w-5 h-5 bg-gray-200 rounded-sm flex items-center justify-center">
-                      {(item as OrderItem).qty}
+                {/* Quantity - always show for menu mode (even when 0), show for order mode */}
+                {(mode === 'order' || mode === 'menu') && (
+                  <span className="text-gray-600 pr-0 text-sm mr-3 w-4 text-center">
+                    <div className="ml-0 w-5 h-5 bg-gray-200 rounded-sm flex items-center justify-center text-xs font-medium">
+                      {mode === 'order' ? (item as OrderItem).qty : currentQuantity}
                     </div>
                   </span>
                 )}
                 
                 {/* Item name */}
                 <span className={`
-                  text-base ${mode === 'menu' ? '' : 'px-4'}
+                  text-base font-light ${mode === 'menu' ? '' : 'px-4'}
                   ${mode === 'order' ? (
                     isSelectedByMe 
-                      ? 'text-gray-900 font-medium' 
+                      ? 'text-gray-900' 
                       : isSelectedByOther 
                         ? 'text-gray-700' 
                         : 'text-gray-900'

@@ -193,7 +193,7 @@ const POSView: React.FC = () => {
     <div className="h-screen flex flex-col">
       {/* Fixed Header Section */}
       <div className="flex-shrink-0">
-        <div className="bg-gray-50">
+
           <Header 
             title={session.table_number || `Mesa ${session.id.slice(0, 8)}`}
             onBackClick={() => navigate('/admin')}
@@ -212,7 +212,7 @@ const POSView: React.FC = () => {
               Menú
             </h2>
           </div>
-        </div>
+
       </div>
 
       {/* Scrollable Content Section */}
@@ -236,6 +236,36 @@ const POSView: React.FC = () => {
         </div>
       </div>
 
+      <div className="flex-1 overflow-y-auto">
+        <div className="container mx-auto px-4">
+          {/* Cuenta activa - Overlapping below status badge */}
+          <div className="flex justify-between -mt-4">
+            <h2 className="text-lg font-semibold text-gray-800 m-0">
+              Orden Activa
+            </h2>
+            <h3 className="text-lg font-semibold text-gray-800 m-0">
+              Orden Activa
+            </h3>
+          </div>
+          <div className="pb-40">
+
+            {/* Available Active Items */}
+            <div>
+              <OrderItemsList
+                items={menuItems}
+                formatPrice={formatPrice}
+                mode="menu"
+                onAddItem={addMenuItem}
+                onRemoveItem={removeMenuItem}
+                addButtonText="+ Agregar"
+                orderItems={orderItems}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      
       {/* Modal Sheet - show total order value */}
       <ModalSheet
         myTotal={calculateFullOrderTotal()}

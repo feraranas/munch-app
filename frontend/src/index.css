@@ -64,4 +64,24 @@
     padding-bottom: max(8px, env(safe-area-inset-bottom));
     box-shadow: -4px 0px 12px rgba(0, 0, 0, 0.5);
   }
+
+  .grid-notebook-bg {
+    background-color: #ffffff;
+    background-image: 
+      repeating-linear-gradient(
+        0deg,
+        transparent,
+        transparent 34px,
+        rgba(200, 200, 200, 0.3) 34px,
+        transparent 36px
+      ),
+      repeating-linear-gradient(
+        90deg,
+        transparent,
+        transparent 34px,
+        rgba(200, 200, 200, 0.3) 34px,
+        transparent 36px
+      );
+    background-size: 35px 35px;
+  }
 }

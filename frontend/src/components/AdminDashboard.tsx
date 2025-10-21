@@ -10,7 +10,7 @@ const AdminDashboard: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-white">
+      <div className="min-h-screen grid-notebook-bg">
         <Header title="Dashboard" />
         <div className="max-w-2xl mx-auto px-4 sm:px-6 md:px-6 py-6">
           <div className="bg-white rounded-lg shadow-md p-6">
@@ -24,7 +24,7 @@ const AdminDashboard: React.FC = () => {
 
   if (error) {
     return (
-      <div className="min-h-screen bg-white">
+      <div className="min-h-screen grid-notebook-bg">
         <Header title="Dashboard" />
         <div className="max-w-2xl mx-auto px-4 sm:px-6 md:px-6 py-6">
           <div className="bg-white rounded-lg shadow-md p-6">
@@ -43,7 +43,7 @@ const AdminDashboard: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen grid-notebook-bg">
       <Header title="Dashboard" />
 
       <div className="max-w-2xl mx-auto px-8 sm:px-6 md:px-6 py-6">
