@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import * as Sentry from '@sentry/react';
-import { api } from '../config/environment';
+import { useMenuItems } from '../hooks/useQueries';
 import Header from './Header';
 
 interface Topping {
@@ -8,7 +8,7 @@ interface Topping {
   price: number;
 }
 
-interface MenuItem {
+interface MenuItemWithToppings {
   id: string;
   name: string;
   price: number;
@@ -16,33 +16,8 @@ interface MenuItem {
 }
 
 const ClientMenuView: React.FC = () => {
-  const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    const fetchMenuItems = async () => {
-      try {
-        setLoading(true);
-        const response = await fetch(api.menuItems());
-        
-        if (!response.ok) {
-          throw new Error(`Failed to fetch menu items: ${response.statusText}`);
-        }
-        
-        const data = await response.json();
-        setMenuItems(data.items || []);
-        setError(null);
-      } catch (err) {
-        console.error('Error fetching menu items:', err);
-        setError(err instanceof Error ? err.message : 'Failed to load menu');
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchMenuItems();
-  }, []);
+  // Use TanStack Query hook for data fetching with automatic caching
+  const { data: menuItems = [] as MenuItemWithToppings[], isLoading, error } = useMenuItems();
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('es-MX', {
@@ -51,7 +26,7 @@ const ClientMenuView: React.FC = () => {
     }).format(price);
   };
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="h-screen flex flex-col items-center justify-center">
         <div className="bg-white rounded-lg shadow-md p-6">
@@ -67,7 +42,7 @@ const ClientMenuView: React.FC = () => {
       <div className="h-screen flex flex-col items-center justify-center">
         <div className="bg-white rounded-lg shadow-md p-6">
           <h2 className="text-xl font-semibold mb-2 text-red-600">Error</h2>
-          <p className="text-gray-600 mb-4">{error}</p>
+          <p className="text-gray-600 mb-4">{error instanceof Error ? error.message : 'Failed to load menu'}</p>
           <p className="text-sm text-gray-500">Usa la navegación inferior para continuar.</p>
         </div>
       </div>
@@ -94,7 +69,7 @@ const ClientMenuView: React.FC = () => {
             </div>
           ) : (
             <div className="space-y-0">
-              {menuItems.map((item) => (
+              {menuItems.map((item: MenuItemWithToppings) => (
                 <div key={item.id}>
                   {/* Menu Item Row */}
                   <div className="flex justify-between items-center py-2 border-b border-gray-200 bg-white">
@@ -114,7 +89,7 @@ const ClientMenuView: React.FC = () => {
                   {item.toppings && item.toppings.length > 0 && (
                     <div className="bg-gray-50 border-b border-gray-100">
                       <div className="pl-8 pr-4 py-1">
-                        {item.toppings.map((topping, index) => (
+                        {item.toppings.map((topping: Topping, index: number) => (
                           <div 
                             key={`${item.id}-topping-${index}`}
                             className="flex justify-between items-center py-1 text-gray-600"
