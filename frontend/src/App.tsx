@@ -11,7 +11,6 @@ import ProtectedRoute from './components/ProtectedRoute';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import * as Sentry from "@sentry/react";
 import POSView from './components/POSView';
-import MenuView from './components/MenuView';
 import ClientMenuView from './components/ClientMenuView';
 
 // Root layout component
@@ -83,15 +82,7 @@ const router = createBrowserRouter([
             <POSView />
           </ProtectedRoute>
         ),
-      },
-      {
-        path: "admin/table/:tableId/menu",
-        element: (
-          <ProtectedRoute>
-            <MenuView />
-          </ProtectedRoute>
-        ),
-      },
+      }
     ],
   },
 ]);
