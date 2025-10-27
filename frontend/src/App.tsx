@@ -8,18 +8,24 @@ import AdminDashboard from './components/AdminDashboard';
 import BottomNavBar from './components/BottomNavBar';
 import LoginPage from './components/LoginPage';
 import ProtectedRoute from './components/ProtectedRoute';
-import { AuthProvider } from './contexts/AuthContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import * as Sentry from "@sentry/react";
 import POSView from './components/POSView';
 import MenuView from './components/MenuView';
+import ClientMenuView from './components/ClientMenuView';
 
 // Root layout component
 const RootLayout: React.FC = () => {
+  const { user } = useAuth();
+  
+  // Show bottom nav only for unauthenticated users (clients)
+  // Authenticated users (admins) don't need the bottom nav
+  const shouldShowBottomNav = !user;
+  
   return (
     <div className="App">
       <Outlet />
-      {/* {userPermissions?.showNavigation && <BottomNavBar />} */}
-      <BottomNavBar />
+      {shouldShowBottomNav && <BottomNavBar />}
     </div>
   );
 };
@@ -41,6 +47,10 @@ const router = createBrowserRouter([
       {
         path: "check/:orderId",
         element: <CheckView />,
+      },
+      {
+        path: "menu",
+        element: <ClientMenuView />,
       },
       {
         path: "admin/qr",

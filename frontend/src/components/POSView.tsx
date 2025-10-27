@@ -4,6 +4,7 @@ import * as Sentry from '@sentry/react';
 import { useQRSession, useMenuItems, useCreateOrder } from '../hooks/useQueries';
 import { QRSession } from '../services/api';
 import OrderItemsList, { MenuItem, OrderItem, Topping } from './OrderItemsList';
+import ActiveOrderItemsList from './ActiveOrderItemsList';
 import ModalSheet from './ModalSheet';
 import Header from './Header';
 
@@ -118,6 +119,11 @@ const POSView: React.FC = () => {
       
       return prev;
     });
+  };
+
+  // Remove a specific order item from the active order
+  const removeOrderItem = (orderItem: OrderItem) => {
+    setOrderItems(prev => prev.filter(item => item.menuId !== orderItem.menuId));
   };
 
   const calculateFullOrderTotal = () => {
@@ -236,45 +242,44 @@ const POSView: React.FC = () => {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto">
-        <div className="container mx-auto px-4">
-          {/* Cuenta activa - Overlapping below status badge */}
-          <div className="flex justify-between -mt-4">
+
+      {/* Sticky Orden Activa Header */}
+      <div className="sticky top-0 bg-white   shadow-sm z-10">
+        <div className=" mx-auto px-4 pt-2">
+          <div className="flex justify-between items-center">
             <h2 className="text-lg font-semibold text-gray-800 m-0">
-              Orden Activa
+              Orden activa
             </h2>
             <h3 className="text-lg font-semibold text-gray-800 m-0">
-              Orden Activa
+              Total {formatPrice(calculateFullOrderTotal())}
             </h3>
           </div>
-          <div className="pb-40">
+        </div>
+      </div>
 
-            {/* Available Active Items */}
-            <div>
-              <OrderItemsList
-                items={menuItems}
-                formatPrice={formatPrice}
-                mode="menu"
-                onAddItem={addMenuItem}
-                onRemoveItem={removeMenuItem}
-                addButtonText="+ Agregar"
-                orderItems={orderItems}
-              />
-            </div>
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-2xl mx-auto px-4">
+          <div className="pb-40">
+            {/* Active Order Items */}
+            <ActiveOrderItemsList
+              items={orderItems}
+              formatPrice={formatPrice}
+              onRemoveItem={removeOrderItem}
+            />
           </div>
         </div>
       </div>
 
       
       {/* Modal Sheet - show total order value */}
-      <ModalSheet
+      {/* <ModalSheet
         myTotal={calculateFullOrderTotal()}
         selectedItemsCount={orderItems.length}
         formatPrice={formatPrice}
         buttonText="Agregar"
         orderItems={orderItems}
         onConfirmOrder={handleConfirmOrder}
-      />
+      /> */}
 
       {/* Topping Selection Modal */}
       {toppingModal.menuItem && (
