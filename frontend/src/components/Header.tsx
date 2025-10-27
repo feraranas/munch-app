@@ -12,6 +12,7 @@ interface HeaderProps {
     colorClass: string;
     size?: 'sm' | 'md' | 'lg';
   };
+  actionButton?: React.ReactNode;
 }
 
 const Header: React.FC<HeaderProps> = ({ 
@@ -19,7 +20,8 @@ const Header: React.FC<HeaderProps> = ({
   showUserInfo = true, 
   showLogo = true,
   onBackClick,
-  statusBadge 
+  statusBadge,
+  actionButton
 }) => {
   const { user } = useAuth();
 
@@ -76,8 +78,10 @@ const Header: React.FC<HeaderProps> = ({
               )}
             </div>
 
-            {/* Right: Empty space for grid balance */}
-            <div></div>
+            {/* Right: Action button or empty space for grid balance */}
+            <div className="flex justify-end">
+              {actionButton}
+            </div>
           </div>
         </div>
       </div>
