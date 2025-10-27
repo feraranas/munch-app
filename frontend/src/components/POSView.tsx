@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import * as Sentry from '@sentry/react';
-import { useQRSession, useMenuItems, useCreateOrder } from '../hooks/useQueries';
+import { useQRSession, useMenuItems } from '../hooks/useQueries';
 import { QRSession } from '../services/api';
 import OrderItemsList, { MenuItem, OrderItem, Topping } from './OrderItemsList';
 import ActiveOrderItemsList from './ActiveOrderItemsList';
-import ModalSheet from './ModalSheet';
+// import ModalSheet from './ModalSheet'; // Kept for reference, not currently used
+import GenericModalSheet from './GenericModalSheet';
 import Header from './Header';
+import ActiveOrderIcon from './ActiveOrderIcon';
 
 interface RouteParams {
   tableId: string;
@@ -21,6 +23,7 @@ const POSView: React.FC = () => {
   const { tableId } = useParams<keyof RouteParams>() as RouteParams;
   const navigate = useNavigate();
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
+  const [isOrderSheetOpen, setIsOrderSheetOpen] = useState(false);
   const [toppingModal, setToppingModal] = useState<ToppingSelectionModal>({
     menuItem: null,
     selectedToppings: []
@@ -29,7 +32,7 @@ const POSView: React.FC = () => {
   // Use TanStack Query hooks for data fetching
   const { data: sessionData, isLoading: sessionLoading, error: sessionError } = useQRSession(tableId);
   const { data: menuItems = [], isLoading: menuLoading } = useMenuItems();
-  const createOrderMutation = useCreateOrder();
+  // const createOrderMutation = useCreateOrder(); // Uncomment when order confirmation is needed
 
   // Convert QRSessionResponse to QRSession format
   const session: QRSession | null = useMemo(() => {
@@ -133,36 +136,37 @@ const POSView: React.FC = () => {
     }, 0);
   };
 
-  const handleConfirmOrder = async () => {
-    if (!session || orderItems.length === 0) {
-      console.error('Cannot create order: missing session or empty cart');
-      return;
-    }
+  // Kept for future use when order confirmation is needed
+  // const handleConfirmOrder = async () => {
+  //   if (!session || orderItems.length === 0) {
+  //     console.error('Cannot create order: missing session or empty cart');
+  //     return;
+  //   }
 
-    createOrderMutation.mutate(
-      {
-        qrId: session.id,
-        selectedItems: orderItems.map(item => ({
-          id: item.id,
-          menuId: item.menuId,
-          qty: item.qty,
-          toppings: item.toppings || []
-        }))
-      },
-      {
-        onSuccess: (data) => {
-          // Clear the cart after successful order creation
-          setOrderItems([]);
-          
-          // Show success feedback
-          alert(`¡Orden creada exitosamente! ID: ${data.id}`);
-        },
-        onError: (error) => {
-          alert(`Error al crear la orden: ${error.message || 'Error desconocido'}`);
-        }
-      }
-    );
-  };
+  //   createOrderMutation.mutate(
+  //     {
+  //       qrId: session.id,
+  //       selectedItems: orderItems.map(item => ({
+  //         id: item.id,
+  //         menuId: item.menuId,
+  //         qty: item.qty,
+  //         toppings: item.toppings || []
+  //       }))
+  //     },
+  //     {
+  //       onSuccess: (data) => {
+  //         // Clear the cart after successful order creation
+  //         setOrderItems([]);
+  //         
+  //         // Show success feedback
+  //         alert(`¡Orden creada exitosamente! ID: ${data.id}`);
+  //       },
+  //       onError: (error) => {
+  //         alert(`Error al crear la orden: ${error.message || 'Error desconocido'}`);
+  //       }
+  //     }
+  //   );
+  // };
 
   const isLoading = sessionLoading || menuLoading;
   const error = sessionError;
@@ -210,6 +214,15 @@ const POSView: React.FC = () => {
             }}
             showUserInfo={false}
             showLogo={true}
+            actionButton={
+              <button
+                onClick={() => setIsOrderSheetOpen(true)}
+                className="  text-white rounded-md p-2 transition-colors duration-200"
+                aria-label="Ver orden activa"
+              >
+                <ActiveOrderIcon width={24} height={24} className="fill-black" />
+              </button>
+            }
           />
           
           {/* Menu Title - Overlapping below status badge */}
@@ -243,24 +256,27 @@ const POSView: React.FC = () => {
       </div>
 
 
-      {/* Sticky Orden Activa Header */}
-      <div className="sticky top-0 bg-white   shadow-sm z-10">
-        <div className=" mx-auto px-4 pt-2">
-          <div className="flex justify-between items-center">
-            <h2 className="text-lg font-semibold text-gray-800 m-0">
-              Orden activa
-            </h2>
-            <h3 className="text-lg font-semibold text-gray-800 m-0">
-              Total {formatPrice(calculateFullOrderTotal())}
-            </h3>
-          </div>
-        </div>
-      </div>
 
-      <div className="flex-1 overflow-y-auto">
-        <div className="max-w-2xl mx-auto px-4">
-          <div className="pb-40">
-            {/* Active Order Items */}
+      
+      {/* Generic Modal Sheet - Active Order */}
+      <GenericModalSheet
+        isOpen={isOrderSheetOpen}
+        onOpenChange={setIsOrderSheetOpen}
+        title="Orden Activa"
+      >
+        <div className="space-y-4">
+          {/* Total Section */}
+          <div className="bg-white rounded-lg p-4 shadow-sm">
+            <div className="flex justify-between items-center">
+              <span className="text-lg font-semibold text-gray-800">Total</span>
+              <span className="text-xl font-bold text-blue-600">
+                {formatPrice(calculateFullOrderTotal())}
+              </span>
+            </div>
+          </div>
+
+          {/* Active Order Items */}
+          <div className="bg-white rounded-lg shadow-sm">
             <ActiveOrderItemsList
               items={orderItems}
               formatPrice={formatPrice}
@@ -268,10 +284,9 @@ const POSView: React.FC = () => {
             />
           </div>
         </div>
-      </div>
+      </GenericModalSheet>
 
-      
-      {/* Modal Sheet - show total order value */}
+      {/* Modal Sheet - show total order value (Original - kept for reference) */}
       {/* <ModalSheet
         myTotal={calculateFullOrderTotal()}
         selectedItemsCount={orderItems.length}
