@@ -126,9 +126,10 @@ func (app *App) initRouter() {
 	// Public routes (no authentication required)
 	api := app.Router.Group("/api")
 	{
-		api.GET("/qr/:qrId", app.getOrderByQR)   // Clients need this
-		api.GET("/orders/:id", app.getOrder)     // Clients need this
-		api.GET("/menu/items", app.getMenuItems) // Clients need this
+		api.GET("/qr/:qrId", app.getOrderByQR)                 // Clients need this
+		api.GET("/orders/:id", app.getOrder)                   // Clients need this
+		api.GET("/menu/items", app.getMenuItems)               // Clients need this
+		api.POST("/payments/charge", app.processPaymentCharge) // Clients need this for payment processing
 	}
 
 	// Protected routes (authentication required)
