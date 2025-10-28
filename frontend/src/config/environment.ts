@@ -5,6 +5,11 @@ interface AppConfig {
   apiUrl: string;
   wsUrl: string;
   frontendUrl: string;
+  openpay: {
+    merchantId: string;
+    publicApiKey: string;
+    sandboxMode: boolean;
+  };
 }
 
 const getConfig = (): AppConfig => {
@@ -12,11 +17,21 @@ const getConfig = (): AppConfig => {
   const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:8080';
   const wsUrl = process.env.REACT_APP_WS_URL || 'ws://localhost:8080';
   const frontendUrl = process.env.REACT_APP_FRONTEND_URL || 'http://localhost:3000';
+  
+  // Openpay configuration
+  const openpayMerchantId = process.env.REACT_APP_OPENPAY_MERCHANT_ID || 'mgzsjeieerciwtxtfl5b';
+  const openpayPublicApiKey = process.env.REACT_APP_OPENPAY_PUBLIC_API_KEY || 'pk_6bd1d1f26cea4e7bbe8887d676bef1d4';
+  const openpayBandboxMode = process.env.REACT_APP_OPENPAY_SANDBOX_MODE !== 'false'; // Default to true
 
   return {
     apiUrl,
     wsUrl,
     frontendUrl,
+    openpay: {
+      merchantId: openpayMerchantId,
+      publicApiKey: openpayPublicApiKey,
+      sandboxMode: openpayBandboxMode,
+    },
   };
 };
 
@@ -37,6 +52,7 @@ export const api = {
   posOrder: () => `${config.apiUrl}/api/pos/order`,
   updateOrder: () => `${config.apiUrl}/api/orders/update`,
   adminSessions: () => `${config.apiUrl}/api/admin/sessions`,
+  paymentCharge: () => `${config.apiUrl}/api/payments/charge`,
   
   // WebSocket endpoints
   wsSession: (sessionId?: string) => 
