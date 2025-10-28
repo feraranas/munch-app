@@ -60,6 +60,23 @@ type MenuItem struct {
 	Toppings []Topping `json:"toppings,omitempty"`
 }
 
+// PaymentChargeRequest represents a payment charge request from the frontend
+type PaymentChargeRequest struct {
+	TokenID         string  `json:"token_id" binding:"required"`
+	Amount          float64 `json:"amount" binding:"required"`
+	Description     string  `json:"description"`
+	DeviceSessionID string  `json:"device_session_id"`
+}
+
+// PaymentChargeResponse represents the response after processing a payment
+type PaymentChargeResponse struct {
+	Success       bool        `json:"success"`
+	TransactionID string      `json:"transaction_id,omitempty"`
+	Message       string      `json:"message,omitempty"`
+	Error         string      `json:"error,omitempty"`
+	Charge        interface{} `json:"charge,omitempty"`
+}
+
 // Available menu items for the restaurant
 var availableMenuItems = []MenuItem{
 	{
@@ -545,4 +562,92 @@ func (app *App) POSOrder(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusCreated, response)
+}
+
+// processPaymentCharge handles payment processing with Openpay
+func (app *App) processPaymentCharge(c *gin.Context) {
+	var req PaymentChargeRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request: " + err.Error()})
+		return
+	}
+
+	app.Logger.Info().
+		Str("token_id", req.TokenID).
+		Float64("amount", req.Amount).
+		Str("description", req.Description).
+		Msg("Processing payment charge")
+
+	// Initialize Openpay service
+	openpayService := NewOpenpayService(
+		app.Config.OpenpayMerchantID,
+		app.Config.OpenpayPrivateKey,
+		app.Config.OpenpaySandboxMode,
+	)
+
+	// Prepare charge request
+	chargeReq := ChargeRequest{
+		SourceID:        req.TokenID,
+		Method:          "card",
+		Amount:          req.Amount,
+		Description:     req.Description,
+		DeviceSessionID: req.DeviceSessionID,
+		Customer: Customer{
+			Name:  "Cliente Munch App",
+			Email: "cliente@munchapp.com",
+		},
+	}
+
+	// Process the charge
+	chargeResp, err := openpayService.CreateCharge(chargeReq)
+	if err != nil {
+		app.Logger.Error().
+			Err(err).
+			Str("token_id", req.TokenID).
+			Msg("Failed to process payment charge")
+
+		// Check if it's an Openpay error
+		if openpayErr, ok := err.(*OpenpayError); ok {
+			c.JSON(http.StatusBadRequest, PaymentChargeResponse{
+				Success: false,
+				Error:   openpayErr.Description,
+			})
+			return
+		}
+
+		c.JSON(http.StatusInternalServerError, PaymentChargeResponse{
+			Success: false,
+			Error:   "Error al procesar el pago. Intenta nuevamente.",
+		})
+		return
+	}
+
+	// Check if charge was successful
+	if !chargeResp.IsSuccessful() {
+		app.Logger.Warn().
+			Str("transaction_id", chargeResp.ID).
+			Str("status", chargeResp.Status).
+			Msg("Payment charge not successful")
+
+		c.JSON(http.StatusBadRequest, PaymentChargeResponse{
+			Success: false,
+			Error:   chargeResp.GetErrorMessage(),
+			Charge:  chargeResp,
+		})
+		return
+	}
+
+	// Success
+	app.Logger.Info().
+		Str("transaction_id", chargeResp.ID).
+		Float64("amount", chargeResp.Amount).
+		Str("status", chargeResp.Status).
+		Msg("Payment charge successful")
+
+	c.JSON(http.StatusOK, PaymentChargeResponse{
+		Success:       true,
+		TransactionID: chargeResp.ID,
+		Message:       "Pago procesado exitosamente",
+		Charge:        chargeResp,
+	})
 }
