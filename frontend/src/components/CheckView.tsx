@@ -6,6 +6,7 @@ import CollaborativeUsers from './UserProfile';
 import OrderItemsList from './OrderItemsList';
 import ModalSheet from './ModalSheet';
 import { api } from '../config/environment';
+import { processPaymentCharge } from '../services/api';
 
 interface RouteParams {
   orderId: string; // This is actually the QR-ID now
@@ -51,14 +52,12 @@ const CheckView: React.FC = () => {
   const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [paymentProcessing, setPaymentProcessing] = useState<boolean>(false);
-  const [totalPaid, setTotalPaid] = useState<number>(0);
 
   // Initialize WebSocket connection for this QR session
   const { isConnected,
     connectionError,
     connectedUsers,
     itemSelections,
-    totalPaidByGroup,
     sendItemSelection,
     sendPaymentConfirmation
   } = useWebSocket({ qrSessionId: orderId || '' });
@@ -200,28 +199,39 @@ const CheckView: React.FC = () => {
 
   const handleCancelPayment = () => { }
 
-  const confirmPayment = async () => {
+  const confirmPayment = async (tokenId: string, deviceSessionId?: string) => {
     setPaymentProcessing(true);
     const myTotal = calculateMyTotal();
 
-    // Mock Stripe payment delay
-    await new Promise(resolve => setTimeout(resolve, 2000));
+    try {
+      // Process payment with Openpay through backend
+      const paymentResponse = await processPaymentCharge({
+        token_id: tokenId,
+        amount: myTotal,
+        description: `Pago de cuenta - Mesa ${qrSession?.table_number || 'N/A'}`,
+        device_session_id: deviceSessionId,
+      });
 
-    // Update local total paid
-    setTotalPaid(prev => prev + myTotal);
+      if (paymentResponse.success) {
+        // Send WebSocket message to broadcast payment to all users
+        sendPaymentConfirmation(myTotal);
 
-    // Send WebSocket message to broadcast payment to all users
-    sendPaymentConfirmation(myTotal);
+        // Clear selected items after payment
+        // TODO: Make the items have a visual cue about them being paid
+        // (Or make them disappear?)
+        // Clear selected items after payment (Currently)
+        setSelectedItems(new Set());
 
-    // TODO: Make the items have a visual cue about them being paid
-    // (Or make them disappear?)
-    // Clear selected items after payment
-    setSelectedItems(new Set());
-
-    setPaymentProcessing(false);
-    // setShowPaymentModal(false);
-
-    alert('¡Pago confirmado! Gracias por tu pago.');
+        alert('¡Pago confirmado! Gracias por tu pago.');
+      } else {
+        throw new Error(paymentResponse.error || 'Error al procesar el pago');
+      }
+    } catch (error) {
+      console.error('Payment error:', error);
+      alert(`Error al procesar el pago: ${error instanceof Error ? error.message : 'Error desconocido'}`);
+    } finally {
+      setPaymentProcessing(false);
+    }
   };
 
   const handleItemSelection = (menuId: string) => {
