@@ -7,23 +7,29 @@ import (
 
 // Config holds all configuration for the application
 type Config struct {
-	APIPort      int
-	FrontendURL  string
-	APIURL       string
-	DatabaseURL  string
-	DatabaseType string // "sqlite" or "postgres"
-	JWTSecret    string // Secret key for JWT token signing
+	APIPort            int
+	FrontendURL        string
+	APIURL             string
+	DatabaseURL        string
+	DatabaseType       string // "sqlite" or "postgres"
+	JWTSecret          string // Secret key for JWT token signing
+	OpenpayMerchantID  string // Openpay merchant ID
+	OpenpayPrivateKey  string // Openpay private API key
+	OpenpaySandboxMode bool   // Openpay sandbox mode
 }
 
 // LoadConfig loads configuration from environment variables with defaults
 func LoadConfig() *Config {
 	config := &Config{
-		APIPort:      8080,
-		FrontendURL:  "http://localhost:3000",
-		APIURL:       "http://localhost:8080",
-		DatabaseType: "postgres",
-		DatabaseURL:  "postgres://munch_user:munch_password@localhost:5432/munch_app_dev?sslmode=disable",
-		JWTSecret:    "munch-app-secret-change-in-production",
+		APIPort:            8080,
+		FrontendURL:        "http://localhost:3000",
+		APIURL:             "http://localhost:8080",
+		DatabaseType:       "postgres",
+		DatabaseURL:        "postgres://munch_user:munch_password@localhost:5432/munch_app_dev?sslmode=disable",
+		JWTSecret:          "munch-app-secret-change-in-production",
+		OpenpayMerchantID:  "mgzsjeieerciwtxtfl5b",                // Default test merchant ID
+		OpenpayPrivateKey:  "sk_e568c42a6c384b7ab02cd47d2e407cab", // Default test private key
+		OpenpaySandboxMode: true,                                  // Default to sandbox mode
 	}
 
 	// Load from environment variables if they exist
@@ -51,6 +57,19 @@ func LoadConfig() *Config {
 
 	if jwtSecret := os.Getenv("JWT_SECRET"); jwtSecret != "" {
 		config.JWTSecret = jwtSecret
+	}
+
+	// Openpay configuration
+	if merchantID := os.Getenv("OPENPAY_MERCHANT_ID"); merchantID != "" {
+		config.OpenpayMerchantID = merchantID
+	}
+
+	if privateKey := os.Getenv("OPENPAY_PRIVATE_KEY"); privateKey != "" {
+		config.OpenpayPrivateKey = privateKey
+	}
+
+	if sandboxMode := os.Getenv("OPENPAY_SANDBOX_MODE"); sandboxMode == "false" {
+		config.OpenpaySandboxMode = false
 	}
 
 	return config
