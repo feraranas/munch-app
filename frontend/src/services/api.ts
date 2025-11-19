@@ -76,6 +76,21 @@ export interface CreateOrderPayload {
   }[];
 }
 
+export interface PaymentChargePayload {
+  token_id: string;
+  amount: number;
+  description: string;
+  device_session_id?: string;
+}
+
+export interface PaymentChargeResponse {
+  success: boolean;
+  transaction_id?: string;
+  message?: string;
+  error?: string;
+  charge?: any;
+}
+
 // API Functions
 export const fetchMenuItems = async (): Promise<MenuItem[]> => {
   const response = await fetch(api.menuItems());
@@ -132,6 +147,23 @@ export const updateOrder = async (payload: any): Promise<any> => {
   if (!response.ok) {
     const errorData = await response.json();
     throw new Error(errorData.error || 'Failed to update order');
+  }
+
+  return response.json();
+};
+
+export const processPaymentCharge = async (payload: PaymentChargePayload): Promise<PaymentChargeResponse> => {
+  const response = await fetch(api.paymentCharge(), {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    const errorData = await response.json();
+    throw new Error(errorData.error || 'Failed to process payment');
   }
 
   return response.json();

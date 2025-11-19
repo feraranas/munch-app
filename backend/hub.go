@@ -38,10 +38,13 @@ func (h *Hub) Run() {
 	for {
 		select {
 
+		// When Hub.Run() receives the client:
 		case client := <-h.register:
+			// Adds the client to h.clients
 			h.clients[client] = true
 
 			// Add client to their QR session
+			// Adds the client to h.sessions[qrSession]
 			qrSession := client.user.QRSession
 			if h.sessions[qrSession] == nil {
 				h.sessions[qrSession] = make(map[*Client]bool)
@@ -51,6 +54,7 @@ func (h *Hub) Run() {
 			log.Printf("User %s joined session %s", client.user.ID, qrSession)
 
 			// Broadcast user list update to all clients in this session
+			// Broadcasts a user list update to the session
 			h.broadcastUserListToSession(qrSession)
 
 		case client := <-h.unregister:

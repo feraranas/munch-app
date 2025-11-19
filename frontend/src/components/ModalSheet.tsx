@@ -1,7 +1,6 @@
 import { Sheet } from 'react-modal-sheet';
 import { useState } from 'react';
 import { ModalHeader } from './ModalHeader';
-import PaymentSummary from './PaymentSummary';
 import PaymentForm from './PaymentForm';
 
 interface ModalSheetProps {
@@ -12,7 +11,7 @@ interface ModalSheetProps {
   paymentProcessing?: boolean;
   selectedItemsCount?: number;
   formatPrice: (price: number) => string;
-  onPayment?: () => void;
+  onPayment?: (tokenId: string, deviceSessionId?: string) => void;
   onCancelPayment?: () => void;
   buttonText?: string;
   orderItems?: Array<{
@@ -141,7 +140,7 @@ function ModalSheet({
             ) : (
               // Payment View (original functionality)
               <>
-                <PaymentSummary
+                {/* <PaymentSummary
                   myTotal={myTotal}
                   // totalPaidByGroup={totalPaidByGroup ?? 0}
                   // totalPaid={totalPaid ?? 0}
@@ -149,13 +148,13 @@ function ModalSheet({
                   paymentProcessing={paymentProcessing ?? false}
                   formatPrice={formatPrice}
                   onPayment={onPayment ?? (() => {})}
-                />
+                /> */}
                 <PaymentForm
                   myTotal={myTotal}
                   selectedItemsCount={selectedItemsCount ?? 0}
                   paymentProcessing={paymentProcessing ?? false}
                   formatPrice={formatPrice}
-                  onConfirmPayment={onPayment ?? (() => {})}
+                  onConfirmPayment={onPayment ?? ((tokenId: string, deviceSessionId?: string) => {})}
                   onCancel={onCancelPayment ?? (() => {})}
                 />
               </>
