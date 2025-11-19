@@ -134,7 +134,8 @@ func (app *App) webSocketHandler(c *gin.Context) {
 		},
 	}
 
-	// Register the client with the hub
+	// Register the client with the hub. This function Sends the client to the Hub for registration.
+	// hub.go Run() L(41-54)
 	client.hub.register <- client
 
 	// Allow collection of memory referenced by the caller by doing all work in
