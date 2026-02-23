@@ -95,7 +95,7 @@ func (app *App) initDB() error {
 	app.Logger.Info().Str("database_url", app.Config.DatabaseURL).Msg("Connected to database")
 
 	// Auto migrate the schema
-	return app.DB.AutoMigrate(&StaffUser{}, &QRSession{}, &Order{})
+	return app.DB.AutoMigrate(&StaffUser{}, &QRSession{}, &Order{}, &Payment{})
 }
 
 func (app *App) initRouter() {

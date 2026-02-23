@@ -34,3 +34,16 @@ type Order struct {
 	Status    string  `json:"status"`
 	CreatedAt int64   `json:"created_at" gorm:"autoCreateTime"`
 }
+
+// Payment represents a payment attempt for an order
+type Payment struct {
+	ID              string  `json:"id" gorm:"primaryKey"`
+	OrderID         string  `json:"order_id" gorm:"index;not null"`
+	TransactionID   string  `json:"transaction_id"`
+	Amount          float64 `json:"amount"`
+	Status          string  `json:"status"` // "pending", "completed", "failed"
+	TokenID         string  `json:"token_id"`
+	ErrorMessage    string  `json:"error_message,omitempty"`
+	OpenpayResponse string  `json:"-" gorm:"type:text"`
+	CreatedAt       int64   `json:"created_at" gorm:"autoCreateTime"`
+}
