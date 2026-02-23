@@ -62,10 +62,10 @@ type MenuItem struct {
 
 // PaymentChargeRequest represents a payment charge request from the frontend
 type PaymentChargeRequest struct {
-	TokenID         string  `json:"token_id" binding:"required"`
-	Amount          float64 `json:"amount" binding:"required"`
-	Description     string  `json:"description"`
-	DeviceSessionID string  `json:"device_session_id"`
+	TokenID         string `json:"token_id" binding:"required"`
+	OrderID         string `json:"order_id" binding:"required"`
+	Description     string `json:"description"`
+	DeviceSessionID string `json:"device_session_id"`
 }
 
 // PaymentChargeResponse represents the response after processing a payment
@@ -572,11 +572,51 @@ func (app *App) processPaymentCharge(c *gin.Context) {
 		return
 	}
 
+	// Fetch order from database (amount comes from DB, not request)
+	var order Order
+	if err := app.DB.First(&order, "id = ?", req.OrderID).Error; err != nil {
+		c.JSON(http.StatusNotFound, PaymentChargeResponse{
+			Success: false,
+			Error:   "Orden no encontrada.",
+		})
+		return
+	}
+
+	// Idempotency: check if order already has a successful payment
+	var existingPayment Payment
+	if err := app.DB.Where("order_id = ? AND status = ?", req.OrderID, "completed").First(&existingPayment).Error; err == nil {
+		c.JSON(http.StatusConflict, PaymentChargeResponse{
+			Success:       false,
+			TransactionID: existingPayment.TransactionID,
+			Error:         "Esta orden ya fue pagada.",
+		})
+		return
+	}
+
+	amount := order.Total
+
 	app.Logger.Info().
 		Str("token_id", req.TokenID).
-		Float64("amount", req.Amount).
-		Str("description", req.Description).
+		Str("order_id", req.OrderID).
+		Float64("amount", amount).
 		Msg("Processing payment charge")
+
+	// Create pending payment record
+	payment := Payment{
+		ID:      uuid.New().String(),
+		OrderID: req.OrderID,
+		Amount:  amount,
+		Status:  "pending",
+		TokenID: req.TokenID,
+	}
+	if err := app.DB.Create(&payment).Error; err != nil {
+		app.Logger.Error().Err(err).Msg("Failed to create payment record")
+		c.JSON(http.StatusInternalServerError, PaymentChargeResponse{
+			Success: false,
+			Error:   "Error al registrar el pago.",
+		})
+		return
+	}
 
 	// Initialize Openpay service
 	openpayService := NewOpenpayService(
@@ -589,7 +629,7 @@ func (app *App) processPaymentCharge(c *gin.Context) {
 	chargeReq := ChargeRequest{
 		SourceID:        req.TokenID,
 		Method:          "card",
-		Amount:          req.Amount,
+		Amount:          amount,
 		Description:     req.Description,
 		DeviceSessionID: req.DeviceSessionID,
 		Customer: Customer{
@@ -600,14 +640,25 @@ func (app *App) processPaymentCharge(c *gin.Context) {
 
 	// Process the charge
 	chargeResp, err := openpayService.CreateCharge(chargeReq)
+
+	// Store raw Openpay response for audit
+	if chargeResp != nil {
+		if rawJSON, jsonErr := json.Marshal(chargeResp); jsonErr == nil {
+			payment.OpenpayResponse = string(rawJSON)
+		}
+	}
+
 	if err != nil {
 		app.Logger.Error().
 			Err(err).
 			Str("token_id", req.TokenID).
+			Str("order_id", req.OrderID).
 			Msg("Failed to process payment charge")
 
-		// Check if it's an Openpay error
+		payment.Status = "failed"
 		if openpayErr, ok := err.(*OpenpayError); ok {
+			payment.ErrorMessage = openpayErr.Description
+			app.DB.Save(&payment)
 			c.JSON(http.StatusBadRequest, PaymentChargeResponse{
 				Success: false,
 				Error:   openpayErr.Description,
@@ -615,6 +666,8 @@ func (app *App) processPaymentCharge(c *gin.Context) {
 			return
 		}
 
+		payment.ErrorMessage = err.Error()
+		app.DB.Save(&payment)
 		c.JSON(http.StatusInternalServerError, PaymentChargeResponse{
 			Success: false,
 			Error:   "Error al procesar el pago. Intenta nuevamente.",
@@ -627,7 +680,13 @@ func (app *App) processPaymentCharge(c *gin.Context) {
 		app.Logger.Warn().
 			Str("transaction_id", chargeResp.ID).
 			Str("status", chargeResp.Status).
+			Str("order_id", req.OrderID).
 			Msg("Payment charge not successful")
+
+		payment.Status = "failed"
+		payment.TransactionID = chargeResp.ID
+		payment.ErrorMessage = chargeResp.GetErrorMessage()
+		app.DB.Save(&payment)
 
 		c.JSON(http.StatusBadRequest, PaymentChargeResponse{
 			Success: false,
@@ -637,9 +696,17 @@ func (app *App) processPaymentCharge(c *gin.Context) {
 		return
 	}
 
-	// Success
+	// Success: update payment record
+	payment.Status = "completed"
+	payment.TransactionID = chargeResp.ID
+	app.DB.Save(&payment)
+
+	// Update order status to paid
+	app.DB.Model(&order).Update("status", "paid")
+
 	app.Logger.Info().
 		Str("transaction_id", chargeResp.ID).
+		Str("order_id", req.OrderID).
 		Float64("amount", chargeResp.Amount).
 		Str("status", chargeResp.Status).
 		Msg("Payment charge successful")
