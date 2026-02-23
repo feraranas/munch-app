@@ -27,9 +27,9 @@ func LoadConfig() *Config {
 		DatabaseType:       "postgres",
 		DatabaseURL:        "postgres://munch_user:munch_password@localhost:5432/munch_app_dev?sslmode=disable",
 		JWTSecret:          "munch-app-secret-change-in-production",
-		OpenpayMerchantID:  "mgzsjeieerciwtxtfl5b",                // Default test merchant ID
-		OpenpayPrivateKey:  "sk_e568c42a6c384b7ab02cd47d2e407cab", // Default test private key
-		OpenpaySandboxMode: true,                                  // Default to sandbox mode
+		OpenpayMerchantID:  "", // Set via OPENPAY_MERCHANT_ID env var
+		OpenpayPrivateKey:  "", // Set via OPENPAY_PRIVATE_KEY env var
+		OpenpaySandboxMode: true,
 	}
 
 	// Load from environment variables if they exist

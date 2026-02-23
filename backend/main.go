@@ -59,6 +59,11 @@ func main() {
 	// Load configuration
 	app.Config = config.LoadConfig()
 
+	// Warn if Openpay credentials are missing
+	if app.Config.OpenpayMerchantID == "" || app.Config.OpenpayPrivateKey == "" {
+		app.Logger.Warn().Msg("Openpay credentials not configured. Set OPENPAY_MERCHANT_ID and OPENPAY_PRIVATE_KEY env vars.")
+	}
+
 	// Initialize database
 	if err := app.initDB(); err != nil {
 		app.Logger.Fatal().Err(err).Msg("Failed to initialize database")
@@ -95,7 +100,7 @@ func (app *App) initDB() error {
 	app.Logger.Info().Str("database_url", app.Config.DatabaseURL).Msg("Connected to database")
 
 	// Auto migrate the schema
-	return app.DB.AutoMigrate(&StaffUser{}, &QRSession{}, &Order{})
+	return app.DB.AutoMigrate(&StaffUser{}, &QRSession{}, &Order{}, &Payment{})
 }
 
 func (app *App) initRouter() {

@@ -19,9 +19,9 @@ const getConfig = (): AppConfig => {
   const frontendUrl = process.env.REACT_APP_FRONTEND_URL || 'http://localhost:3000';
   
   // Openpay configuration
-  const openpayMerchantId = process.env.REACT_APP_OPENPAY_MERCHANT_ID || 'mgzsjeieerciwtxtfl5b';
-  const openpayPublicApiKey = process.env.REACT_APP_OPENPAY_PUBLIC_API_KEY || 'pk_6bd1d1f26cea4e7bbe8887d676bef1d4';
-  const openpayBandboxMode = process.env.REACT_APP_OPENPAY_SANDBOX_MODE !== 'false'; // Default to true
+  const openpayMerchantId = process.env.REACT_APP_OPENPAY_MERCHANT_ID || '';
+  const openpayPublicApiKey = process.env.REACT_APP_OPENPAY_PUBLIC_API_KEY || '';
+  const openpaySandboxMode = process.env.REACT_APP_OPENPAY_SANDBOX_MODE !== 'false'; // Default to true
 
   return {
     apiUrl,
@@ -30,7 +30,7 @@ const getConfig = (): AppConfig => {
     openpay: {
       merchantId: openpayMerchantId,
       publicApiKey: openpayPublicApiKey,
-      sandboxMode: openpayBandboxMode,
+      sandboxMode: openpaySandboxMode,
     },
   };
 };

@@ -207,7 +207,7 @@ const CheckView: React.FC = () => {
       // Process payment with Openpay through backend
       const paymentResponse = await processPaymentCharge({
         token_id: tokenId,
-        amount: myTotal,
+        order_id: qrSession!.order!.id,
         description: `Pago de cuenta - Mesa ${qrSession?.table_number || 'N/A'}`,
         device_session_id: deviceSessionId,
       });
