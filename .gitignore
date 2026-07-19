@@ -47,3 +47,8 @@ promtail/docker_volumes/
 # Editor
 .history
 foundations/
+
+# Beads / Dolt files (added by bd init)
+.dolt/
+.beads-credential-key
+.beads/proxieddb/
