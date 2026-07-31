@@ -596,18 +596,17 @@ func (app *App) processPaymentCharge(c *gin.Context) {
 	amount := order.Total
 
 	app.Logger.Info().
-		Str("token_id", req.TokenID).
 		Str("order_id", req.OrderID).
 		Float64("amount", amount).
 		Msg("Processing payment charge")
 
-	// Create pending payment record
+	// Create pending payment record. The Openpay token is intentionally not
+	// logged or persisted: it is a single-use payment credential.
 	payment := Payment{
 		ID:      uuid.New().String(),
 		OrderID: req.OrderID,
 		Amount:  amount,
 		Status:  "pending",
-		TokenID: req.TokenID,
 	}
 	if err := app.DB.Create(&payment).Error; err != nil {
 		app.Logger.Error().Err(err).Msg("Failed to create payment record")
@@ -651,7 +650,6 @@ func (app *App) processPaymentCharge(c *gin.Context) {
 	if err != nil {
 		app.Logger.Error().
 			Err(err).
-			Str("token_id", req.TokenID).
 			Str("order_id", req.OrderID).
 			Msg("Failed to process payment charge")
 
