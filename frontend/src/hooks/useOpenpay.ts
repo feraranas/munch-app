@@ -90,7 +90,9 @@ export const useOpenpay = (): UseOpenpayReturn => {
 
       const successCallback = (response: OpenPaySuccessResponse) => {
         const tokenId = response.data.id;
-        console.log('✅ Token created successfully:', tokenId);
+        // Do not log the token id: it is a payment credential and console logs
+        // are forwarded to Sentry. Log only that tokenization succeeded.
+        console.log('✅ Card tokenized successfully');
         onSuccess(tokenId, response);
       };
 

@@ -1,6 +1,9 @@
 package config
 
 import (
+	"crypto/rand"
+	"encoding/hex"
+	"log"
 	"os"
 	"strconv"
 )
@@ -26,7 +29,7 @@ func LoadConfig() *Config {
 		APIURL:             "http://localhost:8080",
 		DatabaseType:       "postgres",
 		DatabaseURL:        "postgres://munch_user:munch_password@localhost:5432/munch_app_dev?sslmode=disable",
-		JWTSecret:          "munch-app-secret-change-in-production",
+		JWTSecret:          "", // Must be provided via JWT_SECRET; a random one is generated if unset
 		OpenpayMerchantID:  "", // Set via OPENPAY_MERCHANT_ID env var
 		OpenpayPrivateKey:  "", // Set via OPENPAY_PRIVATE_KEY env var
 		OpenpaySandboxMode: true,
@@ -70,6 +73,20 @@ func LoadConfig() *Config {
 
 	if sandboxMode := os.Getenv("OPENPAY_SANDBOX_MODE"); sandboxMode == "false" {
 		config.OpenpaySandboxMode = false
+	}
+
+	// Never fall back to a hardcoded JWT secret: a known signing key lets anyone
+	// forge tokens. If unset, generate a random secret for this process. Tokens
+	// then won't survive a restart, which is acceptable for dev; production must
+	// set JWT_SECRET explicitly.
+	if config.JWTSecret == "" {
+		buf := make([]byte, 32)
+		if _, err := rand.Read(buf); err != nil {
+			log.Fatalf("failed to generate a random JWT secret: %v", err)
+		}
+		config.JWTSecret = hex.EncodeToString(buf)
+		log.Println("WARNING: JWT_SECRET is not set; generated a random secret. " +
+			"Sessions will not persist across restarts. Set JWT_SECRET in production.")
 	}
 
 	return config

@@ -42,7 +42,6 @@ type Payment struct {
 	TransactionID   string  `json:"transaction_id"`
 	Amount          float64 `json:"amount"`
 	Status          string  `json:"status"` // "pending", "completed", "failed"
-	TokenID         string  `json:"token_id"`
 	ErrorMessage    string  `json:"error_message,omitempty"`
 	OpenpayResponse string  `json:"-" gorm:"type:text"`
 	CreatedAt       int64   `json:"created_at" gorm:"autoCreateTime"`

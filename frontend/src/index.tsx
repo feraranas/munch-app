@@ -12,14 +12,15 @@ Sentry.init({
   // Enable logging to capture console logs automatically
   enableLogs: true,
   
-  // Setting this option to true will send default PII data to Sentry.
-  // For example, automatic IP address collection on events
-  sendDefaultPii: true,
-  
+  // Do not send default PII (e.g. IP addresses) to Sentry. This is a payments
+  // app; avoid collecting personal data by default.
+  sendDefaultPii: false,
+
   // Integrations for better logging and error tracking
   integrations: [
-    // Send console.log, console.warn, and console.error calls as logs to Sentry
-    Sentry.consoleLoggingIntegration({ levels: ["log", "warn", "error"] }),
+    // Forward only warnings and errors to Sentry. `log` is excluded so routine
+    // console.log output (which may include payment-adjacent data) is not harvested.
+    Sentry.consoleLoggingIntegration({ levels: ["warn", "error"] }),
     // React Router v7 integration for automatic route tracking
     Sentry.reactRouterV7BrowserTracingIntegration({
       useEffect: React.useEffect,

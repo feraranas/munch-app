@@ -1,0 +1,1304 @@
+{
+  "project": "Munch",
+  "provenance": {
+    "git_sha": "0cce8651d375101af9b4269aaff34f5c155fa2ec"
+  },
+  "scenarios": [
+    {
+      "id": "diner-pay-share",
+      "title": "Diner claims items and pays their share",
+      "subtitle": "Scan table QR, join live session, claim items, pay via Openpay",
+      "meta": {
+        "created": "2026-07-17",
+        "updated": "2026-07-17"
+      },
+      "source_paths": [
+        "frontend/src/components/CheckView.tsx",
+        "frontend/src/hooks/useWebSocket.ts",
+        "frontend/src/components/OrderItemsList.tsx",
+        "frontend/src/components/ModalSheet.tsx",
+        "frontend/src/components/PaymentForm.tsx",
+        "frontend/src/hooks/useOpenpay.ts",
+        "frontend/src/services/api.ts",
+        "backend/client.go",
+        "backend/hub.go",
+        "backend/handlers.go",
+        "backend/openpay.go"
+      ],
+      "actors": [
+        {
+          "id": "diner",
+          "label": "Diner",
+          "zone": "user",
+          "sub_caption": "at the table"
+        },
+        {
+          "id": "app",
+          "label": "Check App",
+          "kind": "internal",
+          "zone": "client",
+          "sub_caption": "React /check/:qrId"
+        },
+        {
+          "id": "srv",
+          "label": "Munch Backend",
+          "zone": "server",
+          "sub_caption": "Go / Gin + Hub"
+        },
+        {
+          "id": "openpay",
+          "label": "Openpay",
+          "zone": "external",
+          "sub": [
+            {
+              "id": "sdk",
+              "label": "Openpay.js"
+            },
+            {
+              "id": "api",
+              "label": "Charges API"
+            }
+          ]
+        }
+      ],
+      "messages": [
+        {
+          "phase": "JOIN"
+        },
+        {
+          "from": "diner",
+          "to": "app",
+          "text": "scan table QR",
+          "caption": "opens /check/:qrId"
+        },
+        {
+          "from": "app",
+          "to": "srv",
+          "text": "GET /qr/:qrId",
+          "via": "api",
+          "paths": [
+            "join"
+          ],
+          "src": "CheckView.tsx \u2192 handlers.go",
+          "detail": {
+            "why": "Load the table's live check and any open order.",
+            "effects": "reads QR session + current order from DB",
+            "fails": "404 shows 'llama al mesero'; polls again every 10s"
+          }
+        },
+        {
+          "from": "srv",
+          "to": "app",
+          "text": "session + order",
+          "kind": "ret",
+          "via": "io",
+          "caption": "has_order, items, total"
+        },
+        {
+          "from": "app",
+          "to": "srv",
+          "text": "open WebSocket",
+          "via": "api",
+          "paths": [
+            "join"
+          ],
+          "src": "useWebSocket.ts \u2192 client.go",
+          "detail": {
+            "why": "Live channel so diners at the table see each other's claims.",
+            "ordering": "must send join_session first"
+          }
+        },
+        {
+          "from": "app",
+          "to": "srv",
+          "text": "join_session",
+          "via": "api",
+          "caption": "+ device fingerprint",
+          "paths": [
+            "join"
+          ],
+          "detail": {
+            "why": "Register this device as a user in the QR session.",
+            "effects": "Hub adds client to sessions[qrId]",
+            "sends": "device_fingerprint \u2192 deterministic user_id"
+          }
+        },
+        {
+          "from": "srv",
+          "to": "app",
+          "text": "user_list_update",
+          "kind": "async",
+          "via": "api",
+          "caption": "broadcast to session",
+          "src": "hub.go broadcastUserListToSession"
+        },
+        {
+          "phase": "CLAIM"
+        },
+        {
+          "from": "diner",
+          "to": "app",
+          "text": "tap item",
+          "caption": "toggles selectedItems by menuId"
+        },
+        {
+          "from": "app",
+          "to": "srv",
+          "text": "item_selection",
+          "kind": "async",
+          "via": "api",
+          "paths": [
+            "claim"
+          ],
+          "src": "useWebSocket.ts \u2192 client.go",
+          "detail": {
+            "why": "Tell the table this item is being claimed so no one double-pays.",
+            "sends": "item_id, selected"
+          }
+        },
+        {
+          "from": "srv",
+          "to": "app",
+          "text": "item_selection",
+          "kind": "async",
+          "via": "api",
+          "caption": "to other clients only",
+          "src": "client.go readPump",
+          "detail": {
+            "why": "Peers grey out and lock the claimed row.",
+            "effects": "sets itemSelections[item]=userId; row not clickable for others"
+          }
+        },
+        {
+          "phase": "TOKENIZE"
+        },
+        {
+          "from": "diner",
+          "to": "app",
+          "text": "enter card + Pagar",
+          "caption": "in ModalSheet PaymentForm"
+        },
+        {
+          "self": "app",
+          "text": "validate card",
+          "caption": "Luhn, CVV, expiry via Openpay.js"
+        },
+        {
+          "from": "app",
+          "to": "openpay.sdk",
+          "text": "token.create",
+          "via": "api",
+          "paths": [
+            "pay"
+          ],
+          "src": "useOpenpay.ts",
+          "detail": {
+            "why": "PCI-safe: card never touches Munch servers, only a token does.",
+            "sends": "card_number, cvv2, expiry",
+            "fails": "maps SDK error to Spanish message, aborts"
+          }
+        },
+        {
+          "from": "openpay.sdk",
+          "to": "app",
+          "text": "token id",
+          "kind": "ret",
+          "via": "api",
+          "caption": "+ deviceSessionId"
+        },
+        {
+          "phase": "CHARGE"
+        },
+        {
+          "from": "app",
+          "to": "srv",
+          "text": "POST /payment/charge",
+          "via": "api",
+          "paths": [
+            "pay"
+          ],
+          "src": "services/api.ts \u2192 handlers.go processPaymentCharge",
+          "detail": {
+            "why": "Server charges the token; amount comes from the DB order, not the client.",
+            "sends": "token_id, order_id, device_session_id",
+            "auth": "none; amount trusted from DB only"
+          }
+        },
+        {
+          "self": "srv",
+          "text": "guard order",
+          "caption": "load order; block if already paid",
+          "detail": {
+            "why": "Idempotency: reject a second completed payment for the same order.",
+            "effects": "writes pending Payment row",
+            "fails": "409 'Esta orden ya fue pagada'"
+          }
+        },
+        {
+          "from": "srv",
+          "to": "openpay.api",
+          "text": "POST /charges",
+          "via": "api",
+          "paths": [
+            "pay"
+          ],
+          "src": "openpay.go CreateCharge",
+          "detail": {
+            "why": "Actually move the money using the source token.",
+            "sends": "source_id token, amount, customer",
+            "auth": "HTTP Basic, private key",
+            "fails": "OpenpayError \u2192 mark payment failed, return description"
+          }
+        },
+        {
+          "from": "openpay.api",
+          "to": "srv",
+          "text": "charge result",
+          "kind": "ret",
+          "via": "api",
+          "caption": "status completed / failed"
+        },
+        {
+          "self": "srv",
+          "text": "finalize payment",
+          "caption": "payment completed, order \u2192 paid",
+          "detail": {
+            "why": "Persist the settled transaction and close the order.",
+            "effects": "saves transaction_id; order.status = paid"
+          }
+        },
+        {
+          "from": "srv",
+          "to": "app",
+          "text": "200 success",
+          "kind": "ret",
+          "via": "api",
+          "caption": "transaction_id"
+        },
+        {
+          "from": "app",
+          "to": "srv",
+          "text": "payment_confirmed",
+          "kind": "async",
+          "via": "api",
+          "paths": [
+            "pay"
+          ],
+          "src": "useWebSocket.ts \u2192 client.go",
+          "detail": {
+            "why": "Broadcast the paid share so the table's running total updates.",
+            "sends": "amount",
+            "effects": "re-broadcast to all incl. sender; clears my selection"
+          }
+        }
+      ],
+      "fragments": [
+        {
+          "kind": "loop",
+          "label": "poll every 10s",
+          "range": [
+            1,
+            2
+          ]
+        },
+        {
+          "kind": "loop",
+          "label": "per item tapped",
+          "range": [
+            7,
+            9
+          ]
+        },
+        {
+          "kind": "critical",
+          "label": "token created ok",
+          "range": [
+            13,
+            19
+          ]
+        },
+        {
+          "kind": "alt",
+          "label": "order not already paid",
+          "range": [
+            14,
+            19
+          ]
+        }
+      ]
+    },
+    {
+      "id": "diner-browse-menu",
+      "title": "Diner browses the restaurant menu",
+      "subtitle": "Open /menu and view the available menu items fetched from the server",
+      "meta": {
+        "created": "2026-07-17",
+        "updated": "2026-07-17"
+      },
+      "source_paths": [
+        "frontend/src/components/ClientMenuView.tsx",
+        "frontend/src/hooks/useQueries.ts",
+        "frontend/src/services/api.ts",
+        "frontend/src/config/environment.ts",
+        "backend/handlers.go",
+        "backend/main.go"
+      ],
+      "actors": [
+        {
+          "id": "diner",
+          "label": "Diner",
+          "zone": "user"
+        },
+        {
+          "id": "app",
+          "label": "React App",
+          "zone": "client",
+          "sub_caption": "ClientMenuView + TanStack Query"
+        },
+        {
+          "id": "srv",
+          "label": "Go Backend",
+          "zone": "server",
+          "sub_caption": "Gin router"
+        }
+      ],
+      "messages": [
+        {
+          "phase": "OPEN MENU"
+        },
+        {
+          "from": "diner",
+          "to": "app",
+          "text": "open /menu",
+          "caption": "renders ClientMenuView"
+        },
+        {
+          "self": "app",
+          "text": "call useMenuItems()",
+          "caption": "TanStack Query hook",
+          "detail": {
+            "why": "Fetch menu with automatic caching so repeat visits skip the network",
+            "effects": "staleTime 30m, gcTime 1h"
+          }
+        },
+        {
+          "phase": "FETCH FROM CACHE OR SERVER"
+        },
+        {
+          "note": "app",
+          "text": "cache hit skips fetch",
+          "src": "useQueries.ts staleTime 1000*60*30 \u2014 cached data served without refetch"
+        },
+        {
+          "from": "app",
+          "to": "srv",
+          "text": "GET /api/menu/items",
+          "via": "api",
+          "caption": "no auth header \u2014 public",
+          "detail": {
+            "why": "Load the list of dishes and prices to display",
+            "sends": "no Authorization header",
+            "fails": "throws Error(statusText), hook exposes error"
+          },
+          "paths": [
+            "browse-menu"
+          ]
+        },
+        {
+          "self": "srv",
+          "text": "read availableMenuItems",
+          "via": "io",
+          "caption": "in-memory slice, 12 items",
+          "detail": {
+            "why": "Menu is a hardcoded Go slice, not a DB table",
+            "effects": "no persistence read"
+          }
+        },
+        {
+          "from": "srv",
+          "to": "app",
+          "text": "200 items[]",
+          "kind": "ret",
+          "via": "api",
+          "caption": "{ items: MenuItem[] }",
+          "detail": {
+            "why": "Each item carries id, name, price, optional toppings",
+            "sends": "gin.H{items: availableMenuItems}"
+          },
+          "paths": [
+            "browse-menu"
+          ]
+        },
+        {
+          "self": "app",
+          "text": "unwrap data.items",
+          "caption": "fetchMenuItems returns items"
+        },
+        {
+          "phase": "RENDER LIST"
+        },
+        {
+          "from": "app",
+          "to": "diner",
+          "text": "show loading state",
+          "kind": "ret",
+          "caption": "Cargando men\u00fa while isLoading"
+        },
+        {
+          "from": "app",
+          "to": "diner",
+          "text": "render menu rows",
+          "kind": "ret",
+          "caption": "name + MXN price, toppings read-only",
+          "detail": {
+            "why": "Map items to rows; price via Intl.NumberFormat es-MX MXN",
+            "effects": "empty list shows No hay items en el men\u00fa"
+          }
+        }
+      ],
+      "fragments": [
+        {
+          "kind": "alt",
+          "label": "cache fresh vs fetch",
+          "range": [
+            3,
+            6
+          ]
+        }
+      ]
+    },
+    {
+      "id": "staff-login",
+      "title": "Staff logs in to admin/POS",
+      "subtitle": "Enter credentials on /login \u2192 JWT stored \u2192 redirected to admin area",
+      "meta": {
+        "created": "2026-07-17",
+        "updated": "2026-07-17"
+      },
+      "source_paths": [
+        "frontend/src/components/LoginPage.tsx",
+        "frontend/src/contexts/AuthContext.tsx",
+        "frontend/src/services/auth.ts",
+        "frontend/src/components/ProtectedRoute.tsx",
+        "backend/auth.go",
+        "backend/handlers.go"
+      ],
+      "actors": [
+        {
+          "id": "staff",
+          "label": "Staff",
+          "zone": "user",
+          "sub_caption": "waiter / admin"
+        },
+        {
+          "id": "app",
+          "label": "React App",
+          "zone": "client",
+          "sub": [
+            {
+              "id": "login",
+              "label": "LoginPage"
+            },
+            {
+              "id": "auth",
+              "label": "AuthContext"
+            },
+            {
+              "id": "guard",
+              "label": "ProtectedRoute"
+            }
+          ]
+        },
+        {
+          "id": "srv",
+          "label": "Go Backend",
+          "zone": "server",
+          "sub_caption": "Gin /auth"
+        },
+        {
+          "id": "db",
+          "label": "Database",
+          "zone": "datastore",
+          "sub_caption": "StaffUser (GORM)"
+        }
+      ],
+      "messages": [
+        {
+          "phase": "CREDENTIALS"
+        },
+        {
+          "from": "staff",
+          "to": "app.login",
+          "text": "submit form",
+          "caption": "username + password",
+          "detail": {
+            "why": "Staff enters credentials on /login and hits Iniciar Sesi\u00f3n."
+          }
+        },
+        {
+          "from": "app.login",
+          "to": "app.auth",
+          "text": "login()",
+          "caption": "useAuth().login",
+          "src": "LoginPage.tsx \u2192 AuthContext.tsx"
+        },
+        {
+          "phase": "AUTHENTICATE"
+        },
+        {
+          "from": "app.auth",
+          "to": "srv",
+          "text": "POST /auth/login",
+          "caption": "JSON credentials",
+          "via": "api",
+          "paths": [
+            "login"
+          ],
+          "src": "services/auth.ts \u2192 auth.go",
+          "detail": {
+            "why": "Exchange credentials for a signed JWT.",
+            "sends": "{ username, password }",
+            "fails": "throws Error(errorData.error) \u2192 shown in red banner, Sentry capture"
+          }
+        },
+        {
+          "from": "srv",
+          "to": "db",
+          "text": "query StaffUser",
+          "caption": "where username = ?",
+          "via": "io",
+          "paths": [
+            "login"
+          ],
+          "detail": {
+            "fails": "not found \u2192 401 Invalid credentials"
+          }
+        },
+        {
+          "from": "db",
+          "to": "srv",
+          "text": "user row",
+          "kind": "ret",
+          "via": "io"
+        },
+        {
+          "self": "srv",
+          "text": "compare bcrypt hash",
+          "caption": "CompareHashAndPassword",
+          "detail": {
+            "fails": "mismatch \u2192 401 Invalid credentials"
+          }
+        },
+        {
+          "self": "srv",
+          "text": "generateJWT()",
+          "caption": "HS256, exp 24h",
+          "detail": {
+            "why": "Sign user_id/username/role claims with app.Config.JWTSecret."
+          }
+        },
+        {
+          "from": "srv",
+          "to": "app.auth",
+          "text": "200 OK",
+          "caption": "token, username, role",
+          "kind": "ret",
+          "via": "api",
+          "paths": [
+            "login"
+          ]
+        },
+        {
+          "phase": "PERSIST & REDIRECT"
+        },
+        {
+          "self": "app.auth",
+          "text": "store token",
+          "caption": "localStorage auth_token",
+          "detail": {
+            "effects": "isAuthenticated becomes true; user role set"
+          }
+        },
+        {
+          "from": "app.auth",
+          "to": "app.login",
+          "text": "resolve",
+          "kind": "ret"
+        },
+        {
+          "from": "app.login",
+          "to": "app.guard",
+          "text": "navigate(from)",
+          "caption": "default /admin, replace",
+          "src": "LoginPage.tsx \u2192 ProtectedRoute.tsx",
+          "detail": {
+            "why": "Send staff to the page they wanted, or the admin dashboard."
+          }
+        },
+        {
+          "self": "app.guard",
+          "text": "check isAuthenticated",
+          "caption": "render children vs Navigate /login",
+          "detail": {
+            "fails": "if false \u2192 redirect back to /login with saved from location"
+          }
+        },
+        {
+          "from": "app.guard",
+          "to": "staff",
+          "text": "admin/POS view",
+          "kind": "ret"
+        }
+      ],
+      "fragments": [
+        {
+          "kind": "critical",
+          "label": "verify credentials",
+          "range": [
+            3,
+            7
+          ]
+        }
+      ]
+    },
+    {
+      "id": "staff-generate-qr",
+      "title": "Staff generates a table QR session",
+      "subtitle": "On /admin/qr, staff creates a permanent QRSession and the backend renders a printable QR code",
+      "meta": {
+        "created": "2026-07-17",
+        "updated": "2026-07-17"
+      },
+      "source_paths": [
+        "frontend/src/components/QRGenerator.tsx",
+        "backend/handlers.go"
+      ],
+      "actors": [
+        {
+          "id": "staff",
+          "label": "Restaurant staff",
+          "zone": "user"
+        },
+        {
+          "id": "app",
+          "label": "QRGenerator",
+          "zone": "client",
+          "sub_caption": "React admin app"
+        },
+        {
+          "id": "srv",
+          "label": "Go backend",
+          "zone": "server",
+          "sub_caption": "Gin handler"
+        },
+        {
+          "id": "db",
+          "label": "Database",
+          "zone": "datastore"
+        }
+      ],
+      "messages": [
+        {
+          "phase": "CREATE QR"
+        },
+        {
+          "from": "staff",
+          "to": "app",
+          "text": "click Crear QR",
+          "caption": "optional table number",
+          "detail": {
+            "why": "Staff mints a permanent QR for a physical table"
+          }
+        },
+        {
+          "from": "app",
+          "to": "srv",
+          "text": "POST /api/qr/create",
+          "via": "api",
+          "caption": "localhost:8080",
+          "detail": {
+            "why": "Ask backend to mint a new QR session",
+            "sends": "{ tableNumber }",
+            "fails": "alert Failed to create QR session on non-2xx"
+          },
+          "paths": [
+            "qr-create"
+          ]
+        },
+        {
+          "self": "srv",
+          "text": "bind JSON body",
+          "caption": "QRCreateRequest",
+          "detail": {
+            "fails": "400 with error on bad JSON"
+          }
+        },
+        {
+          "self": "srv",
+          "text": "generate qrID",
+          "caption": "uuid.New()",
+          "detail": {
+            "why": "Stable identifier that survives across all future orders"
+          }
+        },
+        {
+          "self": "srv",
+          "text": "build checkURL",
+          "caption": "Config.GetCheckURL(qrID)",
+          "detail": {
+            "why": "Client-facing URL the QR image will encode"
+          }
+        },
+        {
+          "self": "srv",
+          "text": "encode QR PNG",
+          "caption": "go-qrcode Medium 256",
+          "detail": {
+            "why": "Render checkURL as a scannable code",
+            "effects": "base64 data:image/png URL",
+            "fails": "500 Failed to generate QR code"
+          },
+          "paths": [
+            "qr-create"
+          ]
+        },
+        {
+          "from": "srv",
+          "to": "db",
+          "text": "write QRSession",
+          "via": "io",
+          "caption": "id, image, tableNumber",
+          "detail": {
+            "why": "Persist the permanent session so scans and POS orders resolve later",
+            "fails": "500 Failed to create QR session"
+          },
+          "paths": [
+            "qr-create"
+          ]
+        },
+        {
+          "from": "db",
+          "to": "srv",
+          "text": "ok",
+          "kind": "ret",
+          "via": "io"
+        },
+        {
+          "from": "srv",
+          "to": "app",
+          "text": "201 Created",
+          "kind": "ret",
+          "via": "api",
+          "caption": "qrCodeUrl, qrId, checkUrl",
+          "detail": {
+            "sends": "QRResponse"
+          },
+          "paths": [
+            "qr-create"
+          ]
+        },
+        {
+          "self": "app",
+          "text": "setQrSession(data)",
+          "detail": {
+            "effects": "Renders QR image, QR-ID and client URL"
+          }
+        },
+        {
+          "from": "app",
+          "to": "staff",
+          "text": "show printable QR",
+          "kind": "ret",
+          "caption": "permanent code to print"
+        }
+      ],
+      "fragments": [
+        {
+          "kind": "critical",
+          "label": "QR session created",
+          "range": [
+            3,
+            7
+          ]
+        }
+      ]
+    },
+    {
+      "id": "admin-view-sessions",
+      "title": "Admin views active table sessions",
+      "subtitle": "Open /admin dashboard, list active QR sessions, drill into a table's POS",
+      "meta": {
+        "created": "2026-07-17",
+        "updated": "2026-07-17"
+      },
+      "source_paths": [
+        "frontend/src/components/AdminDashboard.tsx",
+        "frontend/src/components/SessionGrid.tsx",
+        "frontend/src/hooks/useQueries.ts",
+        "frontend/src/services/api.ts",
+        "backend/handlers.go"
+      ],
+      "actors": [
+        {
+          "id": "staff",
+          "label": "Admin",
+          "zone": "user",
+          "sub_caption": "waitstaff"
+        },
+        {
+          "id": "app",
+          "label": "React App",
+          "kind": "internal",
+          "zone": "client",
+          "sub": [
+            {
+              "id": "dash",
+              "label": "AdminDashboard"
+            },
+            {
+              "id": "grid",
+              "label": "SessionGrid"
+            },
+            {
+              "id": "query",
+              "label": "useAdminSessions"
+            }
+          ]
+        },
+        {
+          "id": "srv",
+          "label": "Go Backend",
+          "zone": "server",
+          "sub_caption": "Gin handlers"
+        },
+        {
+          "id": "db",
+          "label": "Database",
+          "zone": "datastore",
+          "sub_caption": "GORM"
+        }
+      ],
+      "messages": [
+        {
+          "phase": "LOAD"
+        },
+        {
+          "from": "staff",
+          "to": "app.dash",
+          "text": "open /admin",
+          "paths": [
+            "list"
+          ]
+        },
+        {
+          "from": "app.dash",
+          "to": "app.query",
+          "text": "useAdminSessions()",
+          "caption": "TanStack Query hook",
+          "detail": {
+            "why": "Subscribe the dashboard to the cached sessions list.",
+            "effects": "Renders loading card until first fetch resolves."
+          }
+        },
+        {
+          "phase": "FETCH"
+        },
+        {
+          "from": "app.query",
+          "to": "srv",
+          "text": "GET /admin/sessions",
+          "via": "api",
+          "paths": [
+            "list"
+          ],
+          "caption": "+ auth headers",
+          "src": "api.ts fetchAllSessions \u2192 handlers.go getAllQRSessions",
+          "detail": {
+            "why": "Pull every QR session plus its live order for the grid.",
+            "auth": "getAuthHeaders() bearer",
+            "fails": "throws \u2192 error card with Reintentar button"
+          }
+        },
+        {
+          "from": "srv",
+          "to": "db",
+          "text": "query QRSessions",
+          "via": "io",
+          "paths": [
+            "list"
+          ],
+          "src": "handlers.go getAllQRSessions"
+        },
+        {
+          "from": "db",
+          "to": "srv",
+          "text": "session rows",
+          "kind": "ret",
+          "via": "io"
+        },
+        {
+          "from": "srv",
+          "to": "db",
+          "text": "read order by id",
+          "via": "io",
+          "caption": "per session with CurrentOrder",
+          "detail": {
+            "why": "Hydrate each session's current order for totals and status.",
+            "effects": "Unmarshals items JSON into order payload."
+          }
+        },
+        {
+          "from": "db",
+          "to": "srv",
+          "text": "order rows",
+          "kind": "ret",
+          "via": "io"
+        },
+        {
+          "from": "srv",
+          "to": "app.query",
+          "text": "200 sessions[]",
+          "kind": "ret",
+          "via": "api",
+          "paths": [
+            "list"
+          ],
+          "caption": "has_order, order{items,total,status}"
+        },
+        {
+          "phase": "RENDER"
+        },
+        {
+          "from": "app.query",
+          "to": "app.grid",
+          "text": "sessions prop",
+          "kind": "ret"
+        },
+        {
+          "self": "app.grid",
+          "text": "render session cards",
+          "caption": "table number, status color, total",
+          "detail": {
+            "why": "Map each session to a clickable card with status badge.",
+            "effects": "Empty list shows QR generator prompt."
+          }
+        },
+        {
+          "phase": "POLL"
+        },
+        {
+          "from": "app.query",
+          "to": "srv",
+          "text": "GET /admin/sessions",
+          "via": "api",
+          "caption": "refetchInterval, foreground only",
+          "detail": {
+            "why": "Keep the grid fresh without a manual reload.",
+            "ordering": "paused when tab inactive"
+          }
+        },
+        {
+          "phase": "DRILL IN"
+        },
+        {
+          "from": "staff",
+          "to": "app.grid",
+          "text": "click session card",
+          "paths": [
+            "drill"
+          ]
+        },
+        {
+          "from": "app.grid",
+          "to": "app.dash",
+          "text": "navigate to POS",
+          "kind": "async",
+          "caption": "/admin/table/:id/pos",
+          "src": "SessionGrid.tsx handleSessionClick",
+          "detail": {
+            "why": "Open the table's POS view for that QR session.",
+            "ordering": "react-router navigate"
+          }
+        }
+      ],
+      "fragments": [
+        {
+          "kind": "loop",
+          "label": "per session with an order",
+          "range": [
+            5,
+            6
+          ]
+        },
+        {
+          "kind": "loop",
+          "label": "refetchInterval while mounted",
+          "range": [
+            11,
+            11
+          ]
+        }
+      ]
+    },
+    {
+      "id": "staff-pos-order",
+      "title": "Staff builds and submits a table order (POS)",
+      "subtitle": "On /admin/table/:tableId/pos add items and toppings, then submit the order to the Go backend",
+      "meta": {
+        "created": "2026-07-17",
+        "updated": "2026-07-17"
+      },
+      "source_paths": [
+        "frontend/src/components/POSView.tsx",
+        "frontend/src/components/WaitstaffMenu.tsx",
+        "frontend/src/components/OrderItemsList.tsx",
+        "frontend/src/hooks/useQueries.ts",
+        "backend/handlers.go"
+      ],
+      "actors": [
+        {
+          "id": "staff",
+          "label": "Waitstaff",
+          "zone": "user",
+          "sub_caption": "at the table"
+        },
+        {
+          "id": "app",
+          "label": "React App",
+          "kind": "internal",
+          "zone": "client",
+          "sub": [
+            {
+              "id": "pos",
+              "label": "POSView"
+            },
+            {
+              "id": "list",
+              "label": "OrderItemsList"
+            },
+            {
+              "id": "q",
+              "label": "useQueries"
+            }
+          ]
+        },
+        {
+          "id": "srv",
+          "label": "Go Backend",
+          "zone": "server",
+          "sub_caption": "gin /api"
+        },
+        {
+          "id": "db",
+          "label": "Database",
+          "zone": "datastore",
+          "sub_caption": "GORM"
+        }
+      ],
+      "messages": [
+        {
+          "phase": "LOAD"
+        },
+        {
+          "from": "staff",
+          "to": "app.pos",
+          "text": "open POS",
+          "caption": "/admin/table/:tableId/pos"
+        },
+        {
+          "from": "app.pos",
+          "to": "app.q",
+          "text": "useQRSession(tableId)",
+          "src": "POSView.tsx \u2192 useQueries.ts"
+        },
+        {
+          "from": "app.q",
+          "to": "srv",
+          "text": "GET /api/qr/:id",
+          "via": "api",
+          "detail": {
+            "why": "Confirm the table's QR session and hydrate any in-progress order.",
+            "effects": "seeds orderItems from session.order.items"
+          }
+        },
+        {
+          "from": "srv",
+          "to": "app.q",
+          "text": "session + order",
+          "kind": "ret",
+          "via": "api"
+        },
+        {
+          "from": "app.q",
+          "to": "srv",
+          "text": "GET /api/menu/items",
+          "via": "api",
+          "caption": "cached 30 min",
+          "src": "useQueries.ts \u2192 handlers.go"
+        },
+        {
+          "from": "srv",
+          "to": "app.pos",
+          "text": "menu items",
+          "kind": "ret",
+          "via": "api"
+        },
+        {
+          "phase": "BUILD"
+        },
+        {
+          "from": "staff",
+          "to": "app.list",
+          "text": "tap Agregar",
+          "paths": [
+            "build"
+          ]
+        },
+        {
+          "self": "app.pos",
+          "text": "open topping modal",
+          "caption": "only if item.toppings present"
+        },
+        {
+          "from": "staff",
+          "to": "app.pos",
+          "text": "pick toppings",
+          "paths": [
+            "build"
+          ]
+        },
+        {
+          "self": "app.pos",
+          "text": "push OrderItem",
+          "caption": "unique menuId = id_timestamp_rand",
+          "paths": [
+            "build"
+          ],
+          "detail": {
+            "why": "Every tap adds a distinct line so toppings and payment tracking stay per-item.",
+            "effects": "appends to local orderItems state"
+          }
+        },
+        {
+          "phase": "SUBMIT"
+        },
+        {
+          "from": "staff",
+          "to": "app.pos",
+          "text": "confirm order",
+          "paths": [
+            "submit"
+          ]
+        },
+        {
+          "from": "app.pos",
+          "to": "app.q",
+          "text": "createOrder.mutate()",
+          "caption": "useCreateOrder",
+          "src": "POSView.tsx \u2192 useQueries.ts"
+        },
+        {
+          "from": "app.q",
+          "to": "srv",
+          "text": "POST /api/pos/order",
+          "via": "api",
+          "caption": "{ qrId, selectedItems[] }",
+          "paths": [
+            "submit"
+          ],
+          "detail": {
+            "why": "Persist the assembled cart as a real open order against the table.",
+            "sends": "qrId + selectedItems (id, menuId, qty, toppings)",
+            "fails": "400 if a selectedItem is missing menuId"
+          }
+        },
+        {
+          "self": "srv",
+          "text": "verify QR session",
+          "via": "io",
+          "caption": "404 if not found",
+          "paths": [
+            "submit"
+          ]
+        },
+        {
+          "self": "srv",
+          "text": "price items + toppings",
+          "caption": "match against availableMenuItems",
+          "paths": [
+            "submit"
+          ],
+          "detail": {
+            "why": "Server recomputes totals from its own menu, never trusting client prices.",
+            "fails": "400 No menu items selected if nothing matches"
+          }
+        },
+        {
+          "from": "srv",
+          "to": "db",
+          "text": "write Order",
+          "via": "io",
+          "caption": "status open, items as JSON",
+          "paths": [
+            "submit"
+          ],
+          "detail": {
+            "effects": "inserts Order, sets qrSession.CurrentOrder = orderID"
+          }
+        },
+        {
+          "from": "srv",
+          "to": "app.q",
+          "text": "201 Created",
+          "kind": "ret",
+          "via": "api",
+          "caption": "{ id, items, total, status }",
+          "paths": [
+            "submit"
+          ]
+        },
+        {
+          "self": "app.q",
+          "text": "invalidate queries",
+          "caption": "admin-sessions + qr-session",
+          "detail": {
+            "why": "Refetch so the new order shows on the dashboard and the customer's phone.",
+            "effects": "TanStack cache invalidation"
+          }
+        },
+        {
+          "from": "app.pos",
+          "to": "staff",
+          "text": "order confirmed",
+          "kind": "ret"
+        }
+      ],
+      "fragments": [
+        {
+          "kind": "opt",
+          "label": "item has toppings",
+          "range": [
+            8,
+            9
+          ]
+        },
+        {
+          "kind": "loop",
+          "label": "per menu tap",
+          "range": [
+            7,
+            10
+          ]
+        },
+        {
+          "kind": "critical",
+          "label": "server validates + prices",
+          "range": [
+            15,
+            17
+          ]
+        }
+      ]
+    }
+  ]
+}

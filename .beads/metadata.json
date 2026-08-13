@@ -1,0 +1,7 @@
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "embedded",
+  "dolt_database": "munch_app",
+  "project_id": "16ae6216-2594-4390-8b17-6a35d6f136f3"
+}
