@@ -33,7 +33,7 @@ npm test -- -t "name"    # single test
 npm run build
 ```
 
-Ports: backend 8080, frontend 3000, postgres 5432, grafana 3001. The README's claim that the frontend runs on 3001 is stale — 3001 is Grafana, and CORS/WebSocket origin checks are hardcoded against `http://localhost:3000`.
+Ports: backend 8080, frontend 3000, postgres 5432, grafana 3001. CORS/WebSocket origin checks are hardcoded against `http://localhost:3000`.
 
 ## Architecture
 
