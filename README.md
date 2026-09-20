@@ -44,13 +44,15 @@ npm install
 npm start
 ```
 
-The frontend will start on `http://localhost:3001`
+The frontend will start on `http://localhost:3000`
 
 ## Usage
 
-1. **Generate QR Code**: Visit `http://localhost:3001/admin/qr` to generate a test QR code
-2. **View Check**: Scan the QR code or visit `http://localhost:3001/check/ORDER-ID` 
-3. **Landing Page**: The main page at `http://localhost:3001/` explains the app
+1. **Generate QR Code**: Visit `http://localhost:3000/admin/qr` to generate a test QR code
+2. **View Check**: Scan the QR code or visit `http://localhost:3000/check/ORDER-ID` 
+3. **Landing Page**: The main page at `http://localhost:3000/` explains the app
+
+Ports: backend `8080`, frontend `3000`, postgres `5432`, Grafana `3001` (via docker-compose).
 
 ## API Endpoints
 
