@@ -76,7 +76,12 @@ const OrderItemsList: React.FC<OrderItemsListProps> = React.memo(({
         const itemKey = isOrderItem ? (item as OrderItem).menuId : item.id;
         const selectedByUserId = itemSelections.get(itemKey);
         const isSelectedByMe = selectedItems.has(itemKey) || Boolean(myUserId && selectedByUserId === myUserId);
-        const isSelectedByOther = Boolean(selectedByUserId && !isSelectedByMe);
+        // Only block when the claimer is currently connected. Abandoned claims
+        // (tab closed → new fingerprint/user id) are reclaimable by live diners.
+        const claimerConnected = Boolean(
+          selectedByUserId && connectedUsers.some((u) => u.id === selectedByUserId)
+        );
+        const isSelectedByOther = Boolean(selectedByUserId && !isSelectedByMe && claimerConnected);
         
         // Find current quantity for this menu item in cart (for menu mode)
         // Sum up all quantities for items with the same id
