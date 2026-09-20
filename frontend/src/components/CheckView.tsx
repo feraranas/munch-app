@@ -230,10 +230,17 @@ const CheckView: React.FC = () => {
         // Send WebSocket message to broadcast payment to all users
         sendPaymentConfirmation(myTotal);
 
-        // Clear selected items after payment
-        // TODO: Make the items have a visual cue about them being paid
-        // (Or make them disappear?)
-        // Clear selected items after payment (Currently)
+        // Release durable claims for paid items (deselection persists + clears peers)
+        // and clear local selection so paid items leave the payer total/count.
+        const paidIds = new Set(selectedItems);
+        if (myUserId) {
+          itemSelections.forEach((uid, itemId) => {
+            if (uid === myUserId) paidIds.add(itemId);
+          });
+        }
+        paidIds.forEach((itemId) => {
+          sendItemSelection(itemId, false);
+        });
         setSelectedItems(new Set());
 
         alert('¡Pago confirmado! Gracias por tu pago.');
