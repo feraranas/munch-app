@@ -76,25 +76,12 @@ func (h *Hub) Run() {
 
 		case client := <-h.unregister:
 			if _, ok := h.clients[client]; ok {
-				delete(h.clients, client)
 				close(client.send)
-
-				// Remove client from their QR session
 				qrSession := client.user.QRSession
-				if sessionClients, exists := h.sessions[qrSession]; exists {
-					delete(sessionClients, client)
-					if len(sessionClients) == 0 {
-						delete(h.sessions, qrSession)
-						// Drop in-memory claims cache; DB rows remain for restart restore
-						if h.claims != nil {
-							h.claims.UnloadSession(qrSession)
-						}
-					} else {
-						// Broadcast updated user list to remaining clients in session
-						h.broadcastUserListToSession(qrSession)
-					}
+				stillActive := h.removeClientFromSession(client)
+				if stillActive {
+					h.broadcastUserListToSession(qrSession)
 				}
-
 				log.Printf("User %s left session %s", client.user.ID, qrSession)
 			}
 
@@ -104,11 +91,49 @@ func (h *Hub) Run() {
 				case client.send <- message:
 				default:
 					close(client.send)
-					delete(h.clients, client)
+					h.removeClientFromSession(client)
 				}
 			}
 		}
 	}
+}
+
+// removeClientFromSession removes client from the global and per-session maps.
+// If that was the last client in the session, unloads the in-memory claims cache
+// (same cleanup as a normal unregister). Caller is responsible for closing send.
+// Returns true if other clients remain in the session.
+func (h *Hub) removeClientFromSession(client *Client) bool {
+	delete(h.clients, client)
+
+	qrSession := client.user.QRSession
+	sessionClients, exists := h.sessions[qrSession]
+	if !exists {
+		return false
+	}
+	delete(sessionClients, client)
+	if len(sessionClients) == 0 {
+		delete(h.sessions, qrSession)
+		if h.claims != nil {
+			h.claims.UnloadSession(qrSession)
+		}
+		return false
+	}
+	return true
+}
+
+// isUserConnectedInSession reports whether userID currently has a live client
+// in qrSession. Used to allow reclaim of abandoned claims (owner tab closed).
+func (h *Hub) isUserConnectedInSession(qrSession, userID string) bool {
+	sessionClients, exists := h.sessions[qrSession]
+	if !exists {
+		return false
+	}
+	for client := range sessionClients {
+		if client.user.ID == userID {
+			return true
+		}
+	}
+	return false
 }
 
 // sendJoinAck informs the joining client of its server-assigned user ID.
@@ -189,8 +214,7 @@ func (h *Hub) broadcastUserListToSession(qrSession string) {
 		case client.send <- messageBytes:
 		default:
 			close(client.send)
-			delete(h.clients, client)
-			delete(sessionClients, client)
+			h.removeClientFromSession(client)
 		}
 	}
 }
@@ -210,8 +234,7 @@ func (h *Hub) broadcastToSession(qrSession string, messageBytes []byte, exclude 
 		case client.send <- messageBytes:
 		default:
 			close(client.send)
-			delete(h.clients, client)
-			delete(sessionClients, client)
+			h.removeClientFromSession(client)
 		}
 	}
 }
