@@ -530,7 +530,7 @@ func (app *App) processPaymentCharge(c *gin.Context) {
 		Msg("Processing payment charge")
 
 	// Create pending payment record. The Openpay token is intentionally not
-	logged or persisted: it is a single-use payment credential.
+	// logged or persisted: it is a single-use payment credential.
 	payment := Payment{
 		ID:      uuid.New().String(),
 		OrderID: req.OrderID,
