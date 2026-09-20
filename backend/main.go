@@ -101,7 +101,15 @@ func (app *App) initDB() error {
 	app.Logger.Info().Str("database_url", app.Config.DatabaseURL).Msg("Connected to database")
 
 	// Auto migrate the schema
-	return app.DB.AutoMigrate(&StaffUser{}, &QRSession{}, &Order{}, &Payment{}, &ItemClaim{})
+	if err := app.DB.AutoMigrate(&StaffUser{}, &QRSession{}, &Order{}, &Payment{}, &ItemClaim{}, &MenuItem{}); err != nil {
+		return err
+	}
+
+	// Seed default catalog when menu_items is empty (sqlite + existing postgres volumes)
+	if err := seedMenuItems(app.DB); err != nil {
+		return fmt.Errorf("seed menu items: %w", err)
+	}
+	return nil
 }
 
 func (app *App) initRouter() {

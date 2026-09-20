@@ -39,24 +39,12 @@ type SelectedItem struct {
 	Toppings []Topping `json:"toppings,omitempty"` // Selected toppings
 }
 
-type Topping struct {
-	Name  string  `json:"name"`
-	Price float64 `json:"price"`
-}
-
 type OrderItem struct {
 	ID       string    `json:"id"`
 	MenuID   string    `json:"menuId"`
 	Name     string    `json:"name"`
 	Price    float64   `json:"price"`
 	Qty      int       `json:"qty"`
-	Toppings []Topping `json:"toppings,omitempty"`
-}
-
-type MenuItem struct {
-	ID       string    `json:"id"`
-	Name     string    `json:"name"`
-	Price    float64   `json:"price"`
 	Toppings []Topping `json:"toppings,omitempty"`
 }
 
@@ -75,58 +63,6 @@ type PaymentChargeResponse struct {
 	Message       string      `json:"message,omitempty"`
 	Error         string      `json:"error,omitempty"`
 	Charge        interface{} `json:"charge,omitempty"`
-}
-
-// Available menu items for the restaurant
-var availableMenuItems = []MenuItem{
-	{
-		ID:    "tacos_pastor",
-		Name:  "Tacos al Pastor (3)",
-		Price: 12.99,
-		Toppings: []Topping{
-			{Name: "Extra Piña", Price: 1.50},
-			{Name: "Guacamole", Price: 2.00},
-			{Name: "Crema", Price: 0.75},
-		},
-	},
-	{ID: "enchiladas_verdes", Name: "Enchiladas Verdes", Price: 14.99},
-	{
-		ID:    "tacos_carnitas",
-		Name:  "Tacos de Carnitas (3)",
-		Price: 11.99,
-		Toppings: []Topping{
-			{Name: "Guacamole", Price: 2.00},
-			{Name: "Crema", Price: 0.75},
-			{Name: "Queso Extra", Price: 1.25},
-		},
-	},
-	{
-		ID:    "burrito_pollo",
-		Name:  "Burrito de Pollo",
-		Price: 13.99,
-		Toppings: []Topping{
-			{Name: "Guacamole", Price: 2.00},
-			{Name: "Queso Extra", Price: 1.25},
-			{Name: "Jalapeños", Price: 0.50},
-		},
-	},
-	{
-		ID:    "quesadilla_queso",
-		Name:  "Quesadilla de Queso",
-		Price: 9.99,
-		Toppings: []Topping{
-			{Name: "Hongos", Price: 1.50},
-			{Name: "Rajas", Price: 1.00},
-			{Name: "Queso Extra", Price: 1.25},
-		},
-	},
-	{ID: "cerveza_corona", Name: "Cerveza Corona", Price: 4.50},
-	{ID: "cerveza_modelo", Name: "Cerveza Modelo", Price: 4.50},
-	{ID: "agua_horchata", Name: "Agua de Horchata", Price: 3.99},
-	{ID: "agua_jamaica", Name: "Agua de Jamaica", Price: 3.99},
-	{ID: "flan_napolitano", Name: "Flan Napolitano", Price: 6.99},
-	{ID: "tres_leches", Name: "Tres Leches", Price: 7.99},
-	{ID: "churros", Name: "Churros (6)", Price: 5.99},
 }
 
 func (app *App) createQRSession(c *gin.Context) {
@@ -290,10 +226,15 @@ func (app *App) createOrder(c *gin.Context) {
 	c.JSON(http.StatusCreated, order)
 }
 
-// Get available menu items for waitstaff
+// Get available menu items for waitstaff (from menu_items store)
 func (app *App) getMenuItems(c *gin.Context) {
+	items, err := listMenuItems(app.DB)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch menu items"})
+		return
+	}
 	c.JSON(http.StatusOK, gin.H{
-		"items": availableMenuItems,
+		"items": items,
 	})
 }
 
@@ -374,38 +315,32 @@ func (app *App) updateOrder(c *gin.Context) {
 		return
 	}
 
-	// Process selected items into order items
+	// Process selected items into order items (prices from menu_items store)
 	var orderItems []OrderItem
 	var total float64
 
 	for _, selectedItem := range req.SelectedItems {
-		// Find the menu item
-		for _, menuItem := range availableMenuItems {
-			if menuItem.ID == selectedItem.ID {
-				if selectedItem.Qty <= 0 {
-					continue // Skip items with zero or negative quantity
-				}
-
-				// Calculate item price including toppings
-				itemPrice := menuItem.Price
-				for _, topping := range selectedItem.Toppings {
-					itemPrice += topping.Price
-				}
-
-				orderItem := OrderItem{
-					ID:       menuItem.ID,
-					MenuID:   selectedItem.MenuID,
-					Name:     menuItem.Name,
-					Price:    menuItem.Price,
-					Qty:      selectedItem.Qty,
-					Toppings: selectedItem.Toppings,
-				}
-				orderItems = append(orderItems, orderItem)
-				total += itemPrice
-
-				break
-			}
+		if selectedItem.Qty <= 0 {
+			continue // Skip items with zero or negative quantity
 		}
+
+		menuItem, err := getMenuItemByID(app.DB, selectedItem.ID)
+		if err != nil {
+			continue // Unknown menu id — same as previous slice miss
+		}
+
+		itemPrice := lineItemUnitPrice(menuItem, selectedItem.Toppings)
+
+		orderItem := OrderItem{
+			ID:       menuItem.ID,
+			MenuID:   selectedItem.MenuID,
+			Name:     menuItem.Name,
+			Price:    menuItem.Price,
+			Qty:      selectedItem.Qty,
+			Toppings: selectedItem.Toppings,
+		}
+		orderItems = append(orderItems, orderItem)
+		total += itemPrice
 	}
 
 	if len(orderItems) == 0 {
@@ -470,46 +405,40 @@ func (app *App) POSOrder(c *gin.Context) {
 		return
 	}
 
-	// Convert selected menu items to order items
+	// Convert selected menu items to order items (prices from menu_items store)
 	var orderItems []OrderItem
 	var total float64
 
 	for _, selectedItem := range req.SelectedItems {
-		// Find the menu item
-		for _, menuItem := range availableMenuItems {
-			if menuItem.ID == selectedItem.ID {
-				if selectedItem.Qty <= 0 {
-					continue // Skip items with invalid quantity
-				}
-
-				// Validate MenuID exists - critical for data integrity
-				if selectedItem.MenuID == "" {
-					fmt.Printf("🚨 CRITICAL: SelectedItem missing MenuID - ID: %s, Qty: %d\n", selectedItem.ID, selectedItem.Qty)
-					c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid item: missing unique identifier"})
-					return
-				}
-
-				// Calculate item price including toppings
-				itemPrice := menuItem.Price
-				for _, topping := range selectedItem.Toppings {
-					itemPrice += topping.Price
-				}
-
-				orderItem := OrderItem{
-					ID:       menuItem.ID,
-					MenuID:   selectedItem.MenuID,
-					Name:     menuItem.Name,
-					Price:    menuItem.Price,
-					Qty:      selectedItem.Qty,
-					Toppings: selectedItem.Toppings,
-				}
-				fmt.Printf("🔍 DEBUG POSOrder: Created OrderItem - ID: %s, MenuID: %s, Name: %s, Toppings: %d\n", orderItem.ID, orderItem.MenuID, orderItem.Name, len(orderItem.Toppings))
-				orderItems = append(orderItems, orderItem)
-				total += itemPrice * float64(selectedItem.Qty)
-
-				break
-			}
+		if selectedItem.Qty <= 0 {
+			continue // Skip items with invalid quantity
 		}
+
+		menuItem, err := getMenuItemByID(app.DB, selectedItem.ID)
+		if err != nil {
+			continue // Unknown menu id — same as previous slice miss
+		}
+
+		// Validate MenuID exists - critical for data integrity
+		if selectedItem.MenuID == "" {
+			fmt.Printf("🚨 CRITICAL: SelectedItem missing MenuID - ID: %s, Qty: %d\n", selectedItem.ID, selectedItem.Qty)
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid item: missing unique identifier"})
+			return
+		}
+
+		itemPrice := lineItemUnitPrice(menuItem, selectedItem.Toppings)
+
+		orderItem := OrderItem{
+			ID:       menuItem.ID,
+			MenuID:   selectedItem.MenuID,
+			Name:     menuItem.Name,
+			Price:    menuItem.Price,
+			Qty:      selectedItem.Qty,
+			Toppings: selectedItem.Toppings,
+		}
+		fmt.Printf("🔍 DEBUG POSOrder: Created OrderItem - ID: %s, MenuID: %s, Name: %s, Toppings: %d\n", orderItem.ID, orderItem.MenuID, orderItem.Name, len(orderItem.Toppings))
+		orderItems = append(orderItems, orderItem)
+		total += itemPrice * float64(selectedItem.Qty)
 	}
 
 	// If no items selected, return error

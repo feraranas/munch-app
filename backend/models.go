@@ -62,3 +62,26 @@ type ItemClaim struct {
 func (ItemClaim) TableName() string {
 	return "item_claims"
 }
+
+// Topping is an optional add-on priced on top of a menu item.
+type Topping struct {
+	Name  string  `json:"name"`
+	Price float64 `json:"price"`
+}
+
+// MenuItem is a catalog entry stored in menu_items (not hardcoded in handlers).
+// JSON tags keep GET /api/menu/items compatible with the frontend MenuItem shape.
+type MenuItem struct {
+	ID        string    `json:"id" gorm:"primaryKey"`
+	Name      string    `json:"name" gorm:"not null"`
+	Price     float64   `json:"price" gorm:"not null"`
+	Toppings  []Topping `json:"toppings,omitempty" gorm:"serializer:json"`
+	SortOrder int       `json:"-" gorm:"not null;default:0"`
+	CreatedAt int64     `json:"-" gorm:"autoCreateTime"`
+	UpdatedAt int64     `json:"-" gorm:"autoUpdateTime"`
+}
+
+// TableName specifies the table name for MenuItem
+func (MenuItem) TableName() string {
+	return "menu_items"
+}
