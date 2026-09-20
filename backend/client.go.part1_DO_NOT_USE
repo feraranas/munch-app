@@ -1,0 +1,61 @@
+package main
+
+import (
+	"crypto/rand"
+	"encoding/hex"
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"time"
+
+	"github.com/gin-gonic/gin"
+	"github.com/gorilla/websocket"
+)
+
+const (
+	writeWait = 10 * time.Second
+	pongWait = 60 * time.Second
+	pingPeriod = (pongWait * 9) / 10
+	maxMessageSize = 512
+)
+
+var upgrader = websocket.Upgrader{
+	ReadBufferSize:  1024,
+	WriteBufferSize: 1024,
+	CheckOrigin: func(r *http.Request) bool {
+		allowedOrigins := []string{"http://localhost:3000"}
+		origin := r.Header.Get("Origin")
+		for _, o := range allowedOrigins {
+			if origin == o {
+				return true
+			}
+		}
+		return false
+	},
+}
+
+type Message struct {
+	Type              string `json:"type"`
+	QRSession         string `json:"qr_session,omitempty"`
+	UserID            string `json:"user_id,omitempty"`
+	DeviceFingerprint string `json:"device_fingerprint,omitempty"`
+	Content           string `json:"content,omitempty"`
+	Users             []User `json:"users,omitempty"`
+	ItemID   string `json:"item_id,omitempty"`
+	Selected bool   `json:"selected,omitempty"`
+	Amount float64 `json:"amount,omitempty"`
+}
+
+type User struct {
+	ID        string `json:"id"`
+	QRSession string `json:"qr_session"`
+	JoinedAt  int64  `json:"joined_at"`
+}
+
+type Client struct {
+	hub *Hub
+	conn *websocket.Conn
+	send chan []byte
+	user User
+}
