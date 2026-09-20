@@ -58,6 +58,7 @@ const CheckView: React.FC = () => {
     connectionError,
     connectedUsers,
     itemSelections,
+    myUserId,
     sendItemSelection,
     sendPaymentConfirmation
   } = useWebSocket({ qrSessionId: orderId || '' });
@@ -165,6 +166,19 @@ const CheckView: React.FC = () => {
   //   });
   // };
 
+  const isClaimedByMe = (menuId: string) =>
+    selectedItems.has(menuId) || Boolean(myUserId && itemSelections.get(menuId) === myUserId);
+
+  const mySelectedCount = (() => {
+    const ids = new Set(selectedItems);
+    if (myUserId) {
+      itemSelections.forEach((uid, itemId) => {
+        if (uid === myUserId) ids.add(itemId);
+      });
+    }
+    return ids.size;
+  })();
+
   const calculateMyTotal = () => {
     if (!qrSession?.order?.items) return 0;
 
@@ -175,7 +189,7 @@ const CheckView: React.FC = () => {
           console.error('🚨 CRITICAL: calculateMyTotal found OrderItem without menuId - payment calculation will be incorrect:', item);
           return false; // Exclude items without menuId from payment calculation
         }
-        return selectedItems.has(item.menuId);
+        return isClaimedByMe(item.menuId);
       })
       .reduce((total, item) => {
         const toppingsPrice = item.toppings?.reduce((sum, t) => sum + t.price, 0) || 0;
@@ -237,7 +251,7 @@ const CheckView: React.FC = () => {
   const handleItemSelection = (menuId: string) => {
     setSelectedItems(prev => {
       const newSelection = new Set(prev);
-      const isCurrentlySelected = newSelection.has(menuId);
+      const isCurrentlySelected = newSelection.has(menuId) || Boolean(myUserId && itemSelections.get(menuId) === myUserId);
       const willBeSelected = !isCurrentlySelected;
 
       if (isCurrentlySelected) {
@@ -316,6 +330,7 @@ const CheckView: React.FC = () => {
                 items={qrSession.order.items}
                 selectedItems={selectedItems}
                 itemSelections={itemSelections}
+                myUserId={myUserId}
                 connectedUsers={connectedUsers}
                 onItemSelection={handleItemSelection}
                 formatPrice={formatPrice}
@@ -332,7 +347,7 @@ const CheckView: React.FC = () => {
         // totalPaid={totalPaid}
         // remainingBalance={calculateRemainingBalance()}
         paymentProcessing={paymentProcessing}
-        selectedItemsCount={selectedItems.size}
+        selectedItemsCount={mySelectedCount}
         formatPrice={formatPrice}
         onPayment={confirmPayment}
         onCancelPayment={handleCancelPayment}
