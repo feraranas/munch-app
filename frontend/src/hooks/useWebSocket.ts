@@ -29,11 +29,13 @@ interface WebSocketMessage {
 
 export const useWebSocket = ({ qrSessionId }: UseWebSocketProps) => {
   const wsRef = useRef<WebSocket | null>(null);
+  const myUserIdRef = useRef<string | null>(null);
   const [isConnected, setIsConnected] = useState<boolean>(false);
   const [connectionError, setConnectionError] = useState<string | null>(null);
   const [connectedUsers, setConnectedUsers] = useState<User[]>([]);
   const [itemSelections, setItemSelections] = useState<Map<string, string>>(new Map());
   const [totalPaidByGroup, setTotalPaidByGroup] = useState<number>(0);
+  const [myUserId, setMyUserId] = useState<string | null>(null);
 
   useEffect(() => {
     // Prevent double connections in React Strict Mode
@@ -71,6 +73,14 @@ export const useWebSocket = ({ qrSessionId }: UseWebSocketProps) => {
 
         // Handle different message types
         switch (message.type) {
+
+          case "join_ack":
+            if (message.user_id) {
+              myUserIdRef.current = message.user_id;
+              setMyUserId(message.user_id);
+              console.log(`Joined as user ${message.user_id} for session ${qrSessionId}`);
+            }
+            break;
 
           case "user_list_update":
             if (message.users) {
@@ -148,6 +158,7 @@ export const useWebSocket = ({ qrSessionId }: UseWebSocketProps) => {
 
       // Clear the WebSocket ref
       wsRef.current = null;
+      myUserIdRef.current = null;
     };
   }, [qrSessionId]); // Re-run when qrSessionId changes
 
@@ -160,6 +171,18 @@ export const useWebSocket = ({ qrSessionId }: UseWebSocketProps) => {
       };
       wsRef.current.send(JSON.stringify(message));
       console.log(`Sent item selection: ${itemId} - ${selected ? 'selected' : 'deselected'}`);
+
+      // Optimistic local update (server does not echo item_selection back to sender)
+      const uid = myUserIdRef.current;
+      setItemSelections(prev => {
+        const next = new Map(prev);
+        if (selected && uid) {
+          next.set(itemId, uid);
+        } else {
+          next.delete(itemId);
+        }
+        return next;
+      });
     } else {
       console.error("WebSocket is not connected, cannot send item selection");
     }
@@ -184,6 +207,7 @@ export const useWebSocket = ({ qrSessionId }: UseWebSocketProps) => {
     connectedUsers,
     itemSelections,
     totalPaidByGroup,
+    myUserId,
     sendItemSelection,
     sendPaymentConfirmation
   };

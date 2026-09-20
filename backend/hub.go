@@ -14,6 +14,9 @@ type Hub struct {
 	// QR session to clients mapping
 	sessions map[string]map[*Client]bool
 
+	// Durable + in-memory item claims (session-scoped).
+	claims *ClaimStore
+
 	// Inbound messages from the clients.
 	broadcast chan []byte
 
@@ -24,13 +27,14 @@ type Hub struct {
 	unregister chan *Client
 }
 
-func NewHub() *Hub {
+func NewHub(claims *ClaimStore) *Hub {
 	return &Hub{
 		broadcast:  make(chan []byte),
 		register:   make(chan *Client),
 		unregister: make(chan *Client),
 		clients:    make(map[*Client]bool),
 		sessions:   make(map[string]map[*Client]bool),
+		claims:     claims,
 	}
 }
 
@@ -53,27 +57,31 @@ func (h *Hub) Run() {
 
 			log.Printf("User %s joined session %s", client.user.ID, qrSession)
 
+			// Load durable claims for this session (no-op if already in memory)
+			if h.claims != nil {
+				if err := h.claims.LoadSession(qrSession); err != nil {
+					log.Printf("Error loading claims for session %s: %v", qrSession, err)
+				}
+			}
+
+			// Tell the joining client their assigned user ID (needed to restore own claims)
+			h.sendJoinAck(client)
+
+			// Replay persisted claims so selections survive backend restart / late join
+			h.sendClaimsToClient(client)
+
 			// Broadcast user list update to all clients in this session
 			// Broadcasts a user list update to the session
 			h.broadcastUserListToSession(qrSession)
 
 		case client := <-h.unregister:
 			if _, ok := h.clients[client]; ok {
-				delete(h.clients, client)
 				close(client.send)
-
-				// Remove client from their QR session
 				qrSession := client.user.QRSession
-				if sessionClients, exists := h.sessions[qrSession]; exists {
-					delete(sessionClients, client)
-					if len(sessionClients) == 0 {
-						delete(h.sessions, qrSession)
-					} else {
-						// Broadcast updated user list to remaining clients in session
-						h.broadcastUserListToSession(qrSession)
-					}
+				stillActive := h.removeClientFromSession(client)
+				if stillActive {
+					h.broadcastUserListToSession(qrSession)
 				}
-
 				log.Printf("User %s left session %s", client.user.ID, qrSession)
 			}
 
@@ -83,9 +91,93 @@ func (h *Hub) Run() {
 				case client.send <- message:
 				default:
 					close(client.send)
-					delete(h.clients, client)
+					h.removeClientFromSession(client)
 				}
 			}
+		}
+	}
+}
+
+// removeClientFromSession removes client from the global and per-session maps.
+// If that was the last client in the session, unloads the in-memory claims cache
+// (same cleanup as a normal unregister). Caller is responsible for closing send.
+// Returns true if other clients remain in the session.
+func (h *Hub) removeClientFromSession(client *Client) bool {
+	delete(h.clients, client)
+
+	qrSession := client.user.QRSession
+	sessionClients, exists := h.sessions[qrSession]
+	if !exists {
+		return false
+	}
+	delete(sessionClients, client)
+	if len(sessionClients) == 0 {
+		delete(h.sessions, qrSession)
+		if h.claims != nil {
+			h.claims.UnloadSession(qrSession)
+		}
+		return false
+	}
+	return true
+}
+
+// isUserConnectedInSession reports whether userID currently has a live client
+// in qrSession. Used to allow reclaim of abandoned claims (owner tab closed).
+func (h *Hub) isUserConnectedInSession(qrSession, userID string) bool {
+	sessionClients, exists := h.sessions[qrSession]
+	if !exists {
+		return false
+	}
+	for client := range sessionClients {
+		if client.user.ID == userID {
+			return true
+		}
+	}
+	return false
+}
+
+// sendJoinAck informs the joining client of its server-assigned user ID.
+func (h *Hub) sendJoinAck(client *Client) {
+	message := Message{
+		Type:      "join_ack",
+		UserID:    client.user.ID,
+		QRSession: client.user.QRSession,
+	}
+	messageBytes, err := json.Marshal(message)
+	if err != nil {
+		log.Printf("Error marshaling join_ack: %v", err)
+		return
+	}
+	select {
+	case client.send <- messageBytes:
+	default:
+		log.Printf("Failed to send join_ack to user %s", client.user.ID)
+	}
+}
+
+// sendClaimsToClient replays current session claims as item_selection messages.
+func (h *Hub) sendClaimsToClient(client *Client) {
+	if h.claims == nil {
+		return
+	}
+	claims := h.claims.GetSession(client.user.QRSession)
+	for itemID, userID := range claims {
+		message := Message{
+			Type:      "item_selection",
+			QRSession: client.user.QRSession,
+			ItemID:    itemID,
+			UserID:    userID,
+			Selected:  true,
+		}
+		messageBytes, err := json.Marshal(message)
+		if err != nil {
+			log.Printf("Error marshaling claim replay: %v", err)
+			continue
+		}
+		select {
+		case client.send <- messageBytes:
+		default:
+			log.Printf("Failed to send claim replay to user %s", client.user.ID)
 		}
 	}
 }
@@ -122,8 +214,27 @@ func (h *Hub) broadcastUserListToSession(qrSession string) {
 		case client.send <- messageBytes:
 		default:
 			close(client.send)
-			delete(h.clients, client)
-			delete(sessionClients, client)
+			h.removeClientFromSession(client)
+		}
+	}
+}
+
+// broadcastToSession sends messageBytes to clients in qrSession.
+// If exclude is non-nil, that client is skipped (live claim broadcasts).
+func (h *Hub) broadcastToSession(qrSession string, messageBytes []byte, exclude *Client) {
+	sessionClients, exists := h.sessions[qrSession]
+	if !exists {
+		return
+	}
+	for client := range sessionClients {
+		if exclude != nil && client == exclude {
+			continue
+		}
+		select {
+		case client.send <- messageBytes:
+		default:
+			close(client.send)
+			h.removeClientFromSession(client)
 		}
 	}
 }

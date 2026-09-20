@@ -204,8 +204,46 @@ func (c *Client) readPump() {
 				incomingMsg.ItemID,
 				c.user.QRSession)
 
+			if incomingMsg.ItemID == "" {
+				log.Printf("Ignoring item_selection with empty item_id from user %s", c.user.ID)
+				continue
+			}
+
+			// Persist claim change (memory + DB), then live-broadcast to peers
+			if c.hub.claims != nil {
+				if err := c.hub.claims.ValidateSessionItem(c.user.QRSession, incomingMsg.ItemID); err != nil {
+					log.Printf("Rejecting item_selection for user %s: %v", c.user.ID, err)
+					continue
+				}
+
+				if incomingMsg.Selected {
+					existing := c.hub.claims.GetSession(c.user.QRSession)
+					if owner, ok := existing[incomingMsg.ItemID]; ok && owner != c.user.ID {
+						// Allow takeover only when the current claimer is not live in this session
+						// (e.g. tab closed → new fingerprint). Online claimers keep ownership.
+						if c.hub.isUserConnectedInSession(c.user.QRSession, owner) {
+							log.Printf("Rejecting claim of item %s by %s: already held by connected user %s",
+								incomingMsg.ItemID, c.user.ID, owner)
+							continue
+						}
+					}
+				}
+
+				var persistErr error
+				if incomingMsg.Selected {
+					persistErr = c.hub.claims.SetClaim(c.user.QRSession, c.user.ID, incomingMsg.ItemID)
+				} else {
+					persistErr = c.hub.claims.ClearClaim(c.user.QRSession, c.user.ID, incomingMsg.ItemID)
+				}
+				if persistErr != nil {
+					log.Printf("Error persisting item claim: %v", persistErr)
+					continue
+				}
+			}
+
 			// Add user ID to the message before broadcasting
 			incomingMsg.UserID = c.user.ID
+			incomingMsg.QRSession = c.user.QRSession
 
 			// Re-marshal the message with user ID
 			messageWithUserID, err := json.Marshal(incomingMsg)
@@ -214,20 +252,8 @@ func (c *Client) readPump() {
 				continue
 			}
 
-			// Broadcast to all other clients in the same session
-			if sessionClients, exists := c.hub.sessions[c.user.QRSession]; exists {
-				for client := range sessionClients {
-					if client != c { // Don't send back to sender
-						select {
-						case client.send <- messageWithUserID:
-						default:
-							close(client.send)
-							delete(c.hub.clients, client)
-							delete(sessionClients, client)
-						}
-					}
-				}
-			}
+			// Broadcast to all other clients in the same session (live WS still works)
+			c.hub.broadcastToSession(c.user.QRSession, messageWithUserID, c)
 		case "payment_confirmed":
 			// Handle payment confirmation
 			log.Printf("User %s confirmed payment of $%.2f in session %s",
@@ -246,32 +272,10 @@ func (c *Client) readPump() {
 			}
 
 			// Broadcast to all clients in the same session (including sender for consistency)
-			if sessionClients, exists := c.hub.sessions[c.user.QRSession]; exists {
-				for client := range sessionClients {
-					select {
-					case client.send <- messageWithUserID:
-					default:
-						close(client.send)
-						delete(c.hub.clients, client)
-						delete(sessionClients, client)
-					}
-				}
-			}
+			c.hub.broadcastToSession(c.user.QRSession, messageWithUserID, nil)
 		default:
 			// For other messages, broadcast to all clients in the same session
-			if sessionClients, exists := c.hub.sessions[c.user.QRSession]; exists {
-				for client := range sessionClients {
-					if client != c { // Don't send back to sender
-						select {
-						case client.send <- messageBytes:
-						default:
-							close(client.send)
-							delete(c.hub.clients, client)
-							delete(sessionClients, client)
-						}
-					}
-				}
-			}
+			c.hub.broadcastToSession(c.user.QRSession, messageBytes, c)
 		}
 	}
 }

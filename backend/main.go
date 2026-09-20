@@ -69,8 +69,9 @@ func main() {
 		app.Logger.Fatal().Err(err).Msg("Failed to initialize database")
 	}
 
-	// Initialize WebSocket hub
-	app.Hub = NewHub()
+	// Initialize WebSocket hub with durable claim store
+	claimStore := NewClaimStore(app.DB)
+	app.Hub = NewHub(claimStore)
 	go app.Hub.Run()
 
 	// Initialize router with request logging middleware
@@ -100,7 +101,7 @@ func (app *App) initDB() error {
 	app.Logger.Info().Str("database_url", app.Config.DatabaseURL).Msg("Connected to database")
 
 	// Auto migrate the schema
-	return app.DB.AutoMigrate(&StaffUser{}, &QRSession{}, &Order{}, &Payment{})
+	return app.DB.AutoMigrate(&StaffUser{}, &QRSession{}, &Order{}, &Payment{}, &ItemClaim{})
 }
 
 func (app *App) initRouter() {
