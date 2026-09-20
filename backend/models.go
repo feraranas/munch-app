@@ -46,3 +46,19 @@ type Payment struct {
 	OpenpayResponse string  `json:"-" gorm:"type:text"`
 	CreatedAt       int64   `json:"created_at" gorm:"autoCreateTime"`
 }
+
+// ItemClaim is a durable diner claim of a menu line item within a QR session.
+// Unique on (qr_session, item_id) so one item has at most one claimer per session.
+type ItemClaim struct {
+	ID        string `json:"id" gorm:"primaryKey"`
+	QRSession string `json:"qr_session" gorm:"uniqueIndex:idx_claim_session_item;not null"`
+	ItemID    string `json:"item_id" gorm:"uniqueIndex:idx_claim_session_item;not null"`
+	UserID    string `json:"user_id" gorm:"index;not null"`
+	CreatedAt int64  `json:"created_at" gorm:"autoCreateTime"`
+	UpdatedAt int64  `json:"updated_at" gorm:"autoUpdateTime"`
+}
+
+// TableName specifies the table name for ItemClaim
+func (ItemClaim) TableName() string {
+	return "item_claims"
+}
