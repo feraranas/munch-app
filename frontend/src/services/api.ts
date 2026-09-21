@@ -88,6 +88,17 @@ export interface QRSessionResponse {
   order?: Order;
 }
 
+export interface CreateQRSessionPayload {
+  tableNumber?: string;
+}
+
+export interface CreateQRSessionResponse {
+  qrCodeUrl: string;
+  qrId: string;
+  checkUrl: string;
+  tableNumber?: string;
+}
+
 export interface CreateOrderPayload {
   qrId: string;
   selectedItems: {
@@ -184,6 +195,21 @@ export const fetchAllSessions = async (): Promise<QRSession[]> => {
   const data: SessionsResponse = await response.json();
   // Defensive check: return empty array if sessions is null/undefined
   return data.sessions || [];
+};
+
+export const createQRSession = async (
+  payload: CreateQRSessionPayload
+): Promise<CreateQRSessionResponse> => {
+  const response = await fetch(api.createQr(), {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || 'Failed to create QR session');
+  }
+  return response.json();
 };
 
 export const fetchQRSession = async (qrId: string): Promise<QRSessionResponse> => {
