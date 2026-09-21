@@ -155,6 +155,10 @@ func (app *App) initRouter() {
 		protected.POST("/pos/order", app.POSOrder)
 		protected.PUT("/orders/update", app.updateOrder)
 		protected.GET("/admin/sessions", app.getAllQRSessions)
+		protected.GET("/admin/menu/items", app.getAdminMenuItems)
+		protected.POST("/menu/items", app.createMenuItemHandler)
+		protected.PUT("/menu/items/:id", app.updateMenuItemHandler)
+		protected.DELETE("/menu/items/:id", app.archiveMenuItemHandler)
 	}
 
 	// Websocket routes

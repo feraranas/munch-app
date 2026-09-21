@@ -24,6 +24,11 @@ export interface MenuItem {
   id: string;
   name: string;
   price: number;
+  toppings?: { name: string; price: number }[];
+}
+
+export interface AdminMenuItem extends MenuItem {
+  active: boolean;
 }
 
 export interface OrderItem {
@@ -57,6 +62,22 @@ export interface SessionsResponse {
 
 export interface MenuItemsResponse {
   items: MenuItem[];
+}
+
+export interface AdminMenuItemsResponse {
+  items: AdminMenuItem[];
+}
+
+export interface CreateMenuItemPayload {
+  id?: string;
+  name: string;
+  price: number;
+}
+
+export interface UpdateMenuItemPayload {
+  name?: string;
+  price?: number;
+  active?: boolean;
 }
 
 export interface QRSessionResponse {
@@ -99,6 +120,58 @@ export const fetchMenuItems = async (): Promise<MenuItem[]> => {
   }
   const data: MenuItemsResponse = await response.json();
   return data.items;
+};
+
+export const fetchAdminMenuItems = async (): Promise<AdminMenuItem[]> => {
+  const response = await fetch(api.adminMenuItems(), {
+    headers: getAuthHeaders(),
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to fetch admin menu items: ${response.statusText}`);
+  }
+  const data: AdminMenuItemsResponse = await response.json();
+  return data.items || [];
+};
+
+export const createMenuItem = async (payload: CreateMenuItemPayload): Promise<AdminMenuItem> => {
+  const response = await fetch(api.menuItems(), {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || 'Failed to create menu item');
+  }
+  return response.json();
+};
+
+export const updateMenuItem = async (
+  id: string,
+  payload: UpdateMenuItemPayload
+): Promise<AdminMenuItem> => {
+  const response = await fetch(api.menuItem(id), {
+    method: 'PUT',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || 'Failed to update menu item');
+  }
+  return response.json();
+};
+
+export const archiveMenuItem = async (id: string): Promise<{ id: string; active: boolean }> => {
+  const response = await fetch(api.menuItem(id), {
+    method: 'DELETE',
+    headers: getAuthHeaders(),
+  });
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || 'Failed to archive menu item');
+  }
+  return response.json();
 };
 
 export const fetchAllSessions = async (): Promise<QRSession[]> => {

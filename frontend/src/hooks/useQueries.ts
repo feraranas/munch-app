@@ -1,19 +1,25 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   fetchMenuItems,
+  fetchAdminMenuItems,
   fetchAllSessions,
   fetchQRSession,
   createPOSOrder,
   updateOrder,
-  MenuItem,
+  createMenuItem,
+  updateMenuItem,
+  archiveMenuItem,
   QRSession,
   QRSessionResponse,
   CreateOrderPayload,
+  CreateMenuItemPayload,
+  UpdateMenuItemPayload,
 } from '../services/api';
 
 // Query Keys - Centralized for consistency
 export const queryKeys = {
   menuItems: ['menu-items'] as const,
+  adminMenuItems: ['admin-menu-items'] as const,
   adminSessions: ['admin-sessions'] as const,
   qrSession: (qrId: string) => ['qr-session', qrId] as const,
 };
@@ -105,5 +111,42 @@ export const useUpdateOrder = () => {
     onError: (error) => {
       console.error('Failed to update order:', error);
     },
+  });
+};
+
+export const useAdminMenuItems = () => {
+  return useQuery({
+    queryKey: queryKeys.adminMenuItems,
+    queryFn: fetchAdminMenuItems,
+  });
+};
+
+const invalidateMenuCatalog = (queryClient: ReturnType<typeof useQueryClient>) => {
+  queryClient.invalidateQueries({ queryKey: queryKeys.menuItems });
+  queryClient.invalidateQueries({ queryKey: queryKeys.adminMenuItems });
+};
+
+export const useCreateMenuItem = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (payload: CreateMenuItemPayload) => createMenuItem(payload),
+    onSuccess: () => invalidateMenuCatalog(queryClient),
+  });
+};
+
+export const useUpdateMenuItem = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: string; payload: UpdateMenuItemPayload }) =>
+      updateMenuItem(id, payload),
+    onSuccess: () => invalidateMenuCatalog(queryClient),
+  });
+};
+
+export const useArchiveMenuItem = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (id: string) => archiveMenuItem(id),
+    onSuccess: () => invalidateMenuCatalog(queryClient),
   });
 };

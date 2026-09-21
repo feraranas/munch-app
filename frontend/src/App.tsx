@@ -12,6 +12,7 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import * as Sentry from "@sentry/react";
 import POSView from './components/POSView';
 import ClientMenuView from './components/ClientMenuView';
+import AdminMenuPage from './components/AdminMenuPage';
 
 // Root layout component
 const RootLayout: React.FC = () => {
@@ -72,6 +73,14 @@ const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <AdminDashboard />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "admin/menu",
+        element: (
+          <ProtectedRoute>
+            <AdminMenuPage />
           </ProtectedRoute>
         ),
       },

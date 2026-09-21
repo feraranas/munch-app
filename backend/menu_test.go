@@ -148,3 +148,122 @@ func TestAddMenuItemAffectsListAndPrice(t *testing.T) {
 		t.Fatalf("unit with topping=%v, want 14.00", unit)
 	}
 }
+
+func floatPtr(v float64) *float64 { return &v }
+func boolPtr(v bool) *bool        { return &v }
+func stringPtr(v string) *string  { return &v }
+
+func TestCreateUpdateArchiveMenuItem(t *testing.T) {
+	db := setupMenuTestDB(t)
+	if err := seedMenuItems(db); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+
+	created, err := createMenuItem(db, MenuItem{
+		Name:     "Tacos de Suadero (3)",
+		Price:    13.50,
+		Toppings: []Topping{{Name: "Cebolla", Price: 0.50}},
+	})
+	if err != nil {
+		t.Fatalf("create: %v", err)
+	}
+	if created.ID == "" {
+		t.Fatal("expected derived id")
+	}
+	if !created.Active {
+		t.Fatal("new item should be active")
+	}
+
+	active, err := listActiveMenuItems(db)
+	if err != nil {
+		t.Fatalf("list active: %v", err)
+	}
+	found := false
+	for _, it := range active {
+		if it.ID == created.ID {
+			found = true
+			if it.Price != 13.50 {
+				t.Fatalf("listed price=%v, want 13.50", it.Price)
+			}
+			break
+		}
+	}
+	if !found {
+		t.Fatal("created item missing from active list")
+	}
+
+	updated, err := updateMenuItem(db, created.ID, MenuItemUpdate{Price: floatPtr(15.00)})
+	if err != nil {
+		t.Fatalf("update price: %v", err)
+	}
+	if updated.Price != 15.00 {
+		t.Fatalf("updated price=%v, want 15.00", updated.Price)
+	}
+
+	got, err := getMenuItemByID(db, created.ID)
+	if err != nil {
+		t.Fatalf("get after update: %v", err)
+	}
+	unit := lineItemUnitPrice(got, nil)
+	if unit != 15.00 {
+		t.Fatalf("unit price=%v, want 15.00 (store, not create-time 13.50)", unit)
+	}
+
+	if err := archiveMenuItem(db, created.ID); err != nil {
+		t.Fatalf("archive: %v", err)
+	}
+
+	active, err = listActiveMenuItems(db)
+	if err != nil {
+		t.Fatalf("list after archive: %v", err)
+	}
+	for _, it := range active {
+		if it.ID == created.ID {
+			t.Fatal("archived item still in active list")
+		}
+	}
+
+	if _, err := getMenuItemByID(db, created.ID); err == nil {
+		t.Fatal("archived item must not price new POS lines")
+	}
+
+	all, err := listAllMenuItems(db)
+	if err != nil {
+		t.Fatalf("list all: %v", err)
+	}
+	staffFound := false
+	for _, it := range all {
+		if it.ID == created.ID {
+			staffFound = true
+			if it.Active {
+				t.Fatal("archived item still active in staff list")
+			}
+			break
+		}
+	}
+	if !staffFound {
+		t.Fatal("archived item missing from staff list")
+	}
+
+	// Unarchive via update
+	if _, err := updateMenuItem(db, created.ID, MenuItemUpdate{Active: boolPtr(true)}); err != nil {
+		t.Fatalf("unarchive: %v", err)
+	}
+	if _, err := getMenuItemByID(db, created.ID); err != nil {
+		t.Fatalf("unarchived item should price POS lines: %v", err)
+	}
+}
+
+func TestCreateMenuItemRejectsInvalid(t *testing.T) {
+	db := setupMenuTestDB(t)
+
+	if _, err := createMenuItem(db, MenuItem{Name: "  ", Price: 1}); err == nil {
+		t.Fatal("expected error for empty name")
+	}
+	if _, err := createMenuItem(db, MenuItem{Name: "Tacos", Price: -1}); err == nil {
+		t.Fatal("expected error for negative price")
+	}
+	if _, err := createMenuItem(db, MenuItem{ID: "Not Valid", Name: "Tacos", Price: 1}); err == nil {
+		t.Fatal("expected error for invalid id")
+	}
+}
