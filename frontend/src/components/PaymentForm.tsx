@@ -7,7 +7,7 @@ interface PaymentFormProps {
   selectedItemsCount: number;
   paymentProcessing: boolean;
   formatPrice: (price: number) => string;
-  onConfirmPayment: (tokenId: string, deviceSessionId?: string) => void;
+  onConfirmPayment: (tokenId: string, deviceSessionId?: string) => void | Promise<void>;
   onCancel: () => void;
 }
 
@@ -153,10 +153,10 @@ function PaymentForm({
     createToken(
       cardData,
       (tokenId) => {
-        // Success - pass token to parent for payment processing
         console.log('✅ Token created, processing payment...');
-        onConfirmPayment(tokenId, deviceSessionId || undefined);
-        setIsProcessing(false);
+        Promise.resolve(onConfirmPayment(tokenId, deviceSessionId || undefined))
+          .catch(() => undefined)
+          .finally(() => setIsProcessing(false));
       },
       (errorMessage) => {
         // Error

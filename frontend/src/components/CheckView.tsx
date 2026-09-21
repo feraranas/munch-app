@@ -38,6 +38,7 @@ interface QRSessionResponse {
   qr_id: string;
   table_number?: string;
   has_order: boolean;
+  paid_item_ids?: string[];
   message?: string;
   order?: Order;
 }
@@ -51,6 +52,7 @@ const CheckView: React.FC = () => {
   // const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
   const [pollingInterval, setPollingInterval] = useState<NodeJS.Timeout | null>(null);
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
+  const [paidItemIds, setPaidItemIds] = useState<Set<string>>(new Set());
   const [paymentProcessing, setPaymentProcessing] = useState<boolean>(false);
 
   // Initialize WebSocket connection for this QR session
@@ -80,6 +82,9 @@ const CheckView: React.FC = () => {
       const sessionData = await response.json();
       console.log('qrSessionOrder: ', sessionData)
       setQRSession(sessionData);
+      if (Array.isArray(sessionData.paid_item_ids)) {
+        setPaidItemIds(new Set(sessionData.paid_item_ids));
+      }
       // setLastUpdated(new Date());
       setError(null); // Clear any previous errors
     } catch (err) {
@@ -189,6 +194,9 @@ const CheckView: React.FC = () => {
           console.error('🚨 CRITICAL: calculateMyTotal found OrderItem without menuId - payment calculation will be incorrect:', item);
           return false; // Exclude items without menuId from payment calculation
         }
+        if (paidItemIds.has(item.menuId)) {
+          return false;
+        }
         return isClaimedByMe(item.menuId);
       })
       .reduce((total, item) => {
@@ -213,36 +221,53 @@ const CheckView: React.FC = () => {
 
   const handleCancelPayment = () => { }
 
+  const claimedItemIds = (): string[] => {
+    const ids = new Set<string>();
+    selectedItems.forEach((id) => ids.add(id));
+    if (myUserId) {
+      itemSelections.forEach((uid, itemId) => {
+        if (uid === myUserId) ids.add(itemId);
+      });
+    }
+    paidItemIds.forEach((id) => ids.delete(id));
+    return Array.from(ids);
+  };
+
   const confirmPayment = async (tokenId: string, deviceSessionId?: string) => {
+    const itemIds = claimedItemIds();
+    if (itemIds.length === 0) {
+      throw new Error('Selecciona al menos un item para pagar');
+    }
+
     setPaymentProcessing(true);
     const myTotal = calculateMyTotal();
 
     try {
-      // Process payment with Openpay through backend
       const paymentResponse = await processPaymentCharge({
         token_id: tokenId,
         order_id: qrSession!.order!.id,
+        item_ids: itemIds,
         description: `Pago de cuenta - Mesa ${qrSession?.table_number || 'N/A'}`,
         device_session_id: deviceSessionId,
       });
 
       if (paymentResponse.success) {
-        // Send WebSocket message to broadcast payment to all users
         sendPaymentConfirmation(myTotal);
 
-        // Release durable claims for paid items (deselection persists + clears peers)
-        // and clear local selection so paid items leave the payer total/count.
-        const paidIds = new Set(selectedItems);
-        if (myUserId) {
-          itemSelections.forEach((uid, itemId) => {
-            if (uid === myUserId) paidIds.add(itemId);
-          });
-        }
-        paidIds.forEach((itemId) => {
+        setPaidItemIds((prev) => {
+          const next = new Set(prev);
+          itemIds.forEach((id) => next.add(id));
+          return next;
+        });
+        itemIds.forEach((itemId) => {
           sendItemSelection(itemId, false);
         });
-        setSelectedItems(new Set());
-
+        setSelectedItems((prev) => {
+          const next = new Set(prev);
+          itemIds.forEach((id) => next.delete(id));
+          return next;
+        });
+        await fetchQRSession(true);
         alert('¡Pago confirmado! Gracias por tu pago.');
       } else {
         throw new Error(paymentResponse.error || 'Error al procesar el pago');
@@ -250,12 +275,16 @@ const CheckView: React.FC = () => {
     } catch (error) {
       console.error('Payment error:', error);
       alert(`Error al procesar el pago: ${error instanceof Error ? error.message : 'Error desconocido'}`);
+      throw error;
     } finally {
       setPaymentProcessing(false);
     }
   };
 
   const handleItemSelection = (menuId: string) => {
+    if (paidItemIds.has(menuId)) {
+      return;
+    }
     setSelectedItems(prev => {
       const newSelection = new Set(prev);
       const isCurrentlySelected = newSelection.has(menuId) || Boolean(myUserId && itemSelections.get(menuId) === myUserId);
@@ -337,6 +366,7 @@ const CheckView: React.FC = () => {
                 items={qrSession.order.items}
                 selectedItems={selectedItems}
                 itemSelections={itemSelections}
+                paidItems={paidItemIds}
                 myUserId={myUserId}
                 connectedUsers={connectedUsers}
                 onItemSelection={handleItemSelection}

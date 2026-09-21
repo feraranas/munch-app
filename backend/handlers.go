@@ -51,10 +51,11 @@ type OrderItem struct {
 
 // PaymentChargeRequest represents a payment charge request from the frontend
 type PaymentChargeRequest struct {
-	TokenID         string `json:"token_id" binding:"required"`
-	OrderID         string `json:"order_id" binding:"required"`
-	Description     string `json:"description"`
-	DeviceSessionID string `json:"device_session_id"`
+	TokenID         string   `json:"token_id" binding:"required"`
+	OrderID         string   `json:"order_id" binding:"required"`
+	ItemIDs         []string `json:"item_ids"`
+	Description     string   `json:"description"`
+	DeviceSessionID string   `json:"device_session_id"`
 }
 
 // PaymentChargeResponse represents the response after processing a payment
@@ -149,11 +150,18 @@ func (app *App) getOrderByQR(c *gin.Context) {
 		return
 	}
 
+	paidIDs, err := completedPaidItemIDs(app.DB, order.ID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to load payments"})
+		return
+	}
+
 	// Return order with parsed items
 	response := map[string]interface{}{
-		"qr_id":        qrSession.ID,
-		"table_number": qrSession.TableNumber,
-		"has_order":    true,
+		"qr_id":         qrSession.ID,
+		"table_number":  qrSession.TableNumber,
+		"has_order":     true,
+		"paid_item_ids": paidIDs,
 		"order": map[string]interface{}{
 			"id":         order.ID,
 			"items":      items,
@@ -606,7 +614,7 @@ func (app *App) processPaymentCharge(c *gin.Context) {
 		return
 	}
 
-	// Fetch order from database (amount comes from DB, not request)
+	// Fetch order from database (amount comes from DB line items, not request)
 	var order Order
 	if err := app.DB.First(&order, "id = ?", req.OrderID).Error; err != nil {
 		c.JSON(http.StatusNotFound, PaymentChargeResponse{
@@ -616,18 +624,48 @@ func (app *App) processPaymentCharge(c *gin.Context) {
 		return
 	}
 
-	// Idempotency: check if order already has a successful payment
-	var existingPayment Payment
-	if err := app.DB.Where("order_id = ? AND status = ?", req.OrderID, "completed").First(&existingPayment).Error; err == nil {
-		c.JSON(http.StatusConflict, PaymentChargeResponse{
-			Success:       false,
-			TransactionID: existingPayment.TransactionID,
-			Error:         "Esta orden ya fue pagada.",
+	itemIDs := uniqueNonEmpty(req.ItemIDs)
+	if len(itemIDs) == 0 {
+		c.JSON(http.StatusBadRequest, PaymentChargeResponse{
+			Success: false,
+			Error:   "Selecciona al menos un item para pagar.",
 		})
 		return
 	}
 
-	amount := order.Total
+	var items []OrderItem
+	if err := json.Unmarshal([]byte(order.Items), &items); err != nil {
+		c.JSON(http.StatusInternalServerError, PaymentChargeResponse{
+			Success: false,
+			Error:   "Error al leer la orden.",
+		})
+		return
+	}
+
+	alreadyPaid, err := completedPaidItemIDs(app.DB, req.OrderID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, PaymentChargeResponse{
+			Success: false,
+			Error:   "Error al verificar pagos.",
+		})
+		return
+	}
+	if containsAny(alreadyPaid, itemIDs) {
+		c.JSON(http.StatusConflict, PaymentChargeResponse{
+			Success: false,
+			Error:   "Uno o más items ya fueron pagados.",
+		})
+		return
+	}
+
+	amount, err := amountForMenuIDs(items, itemIDs)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, PaymentChargeResponse{
+			Success: false,
+			Error:   "Item no encontrado en la orden.",
+		})
+		return
+	}
 
 	app.Logger.Info().
 		Str("order_id", req.OrderID).
@@ -640,6 +678,7 @@ func (app *App) processPaymentCharge(c *gin.Context) {
 		ID:      uuid.New().String(),
 		OrderID: req.OrderID,
 		Amount:  amount,
+		ItemIDs: itemIDs,
 		Status:  "pending",
 	}
 	if err := app.DB.Create(&payment).Error; err != nil {
@@ -658,10 +697,15 @@ func (app *App) processPaymentCharge(c *gin.Context) {
 		payment.Status = "completed"
 		payment.TransactionID = txID
 		app.DB.Save(&payment)
-		app.DB.Model(&order).Update("status", "paid")
+		paidNow := append(alreadyPaid, itemIDs...)
+		if allOrderItemsPaid(items, paidNow) {
+			app.DB.Model(&order).Update("status", "paid")
+		}
 		app.Logger.Warn().
 			Str("order_id", req.OrderID).
 			Str("transaction_id", txID).
+			Float64("amount", amount).
+			Int("items", len(itemIDs)).
 			Msg("Openpay unset; completing mock payment")
 		c.JSON(http.StatusOK, PaymentChargeResponse{
 			Success:       true,
@@ -753,8 +797,9 @@ func (app *App) processPaymentCharge(c *gin.Context) {
 	payment.TransactionID = chargeResp.ID
 	app.DB.Save(&payment)
 
-	// Update order status to paid
-	app.DB.Model(&order).Update("status", "paid")
+	if allOrderItemsPaid(items, append(alreadyPaid, itemIDs...)) {
+		app.DB.Model(&order).Update("status", "paid")
+	}
 
 	app.Logger.Info().
 		Str("transaction_id", chargeResp.ID).

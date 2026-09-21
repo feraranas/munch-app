@@ -112,6 +112,7 @@ export interface CreateOrderPayload {
 export interface PaymentChargePayload {
   token_id: string;
   order_id: string;
+  item_ids: string[];
   description: string;
   device_session_id?: string;
 }
