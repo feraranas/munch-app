@@ -19,10 +19,25 @@ interface ToppingSelectionModal {
   selectedToppings: Topping[];
 }
 
+const lineTotal = (item: OrderItem) => {
+  const toppingsPrice = item.toppings?.reduce((sum, t) => sum + t.price, 0) || 0;
+  return (item.price + toppingsPrice) * item.qty;
+};
+
+const itemsTotal = (items: OrderItem[]) => items.reduce((sum, item) => sum + lineTotal(item), 0);
+
+const itemsFingerprint = (items: OrderItem[]) =>
+  items
+    .map((item) => `${item.menuId}:${item.id}:${item.qty}`)
+    .sort()
+    .join('|');
+
 const POSView: React.FC = () => {
   const { tableId } = useParams<keyof RouteParams>() as RouteParams;
   const navigate = useNavigate();
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
+  const [sentItems, setSentItems] = useState<OrderItem[]>([]);
+  const [hydrated, setHydrated] = useState(false);
   const [isOrderSheetOpen, setIsOrderSheetOpen] = useState(false);
   const [toppingModal, setToppingModal] = useState<ToppingSelectionModal>({
     menuItem: null,
@@ -49,12 +64,17 @@ const POSView: React.FC = () => {
     } : null;
   }, [sessionData]);
 
-  // Initialize orderItems from session data when it loads
+  // Hydrate once from the saved order. Do not overwrite waiter edits on poll.
   useEffect(() => {
-    if (session?.order?.items) {
-      setOrderItems(session.order.items);
+    if (hydrated || !session) {
+      return;
     }
-  }, [session]);
+    if (session.order?.items) {
+      setOrderItems(session.order.items);
+      setSentItems(session.order.items);
+    }
+    setHydrated(true);
+  }, [session, hydrated]);
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('es-MX', {
@@ -98,6 +118,7 @@ const POSView: React.FC = () => {
       qty: 1,
       toppings: toppings.length > 0 ? toppings : undefined
     };
+    setConfirmOk(null);
     setOrderItems(prev => [...prev, newOrderItem]);
   };
 
@@ -129,15 +150,16 @@ const POSView: React.FC = () => {
 
   // Remove a specific order item from the active order
   const removeOrderItem = (orderItem: OrderItem) => {
+    setConfirmOk(null);
     setOrderItems(prev => prev.filter(item => item.menuId !== orderItem.menuId));
   };
 
-  const calculateFullOrderTotal = () => {
-    return orderItems.reduce((total, item) => {
-      const toppingsPrice = item.toppings?.reduce((sum, t) => sum + t.price, 0) || 0;
-      return total + ((item.price + toppingsPrice) * item.qty);
-    }, 0);
-  };
+  const calculateFullOrderTotal = () => itemsTotal(orderItems);
+  const sentTotal = itemsTotal(sentItems);
+  const draftTotal = itemsTotal(orderItems);
+  const hasPendingChanges = itemsFingerprint(orderItems) !== itemsFingerprint(sentItems);
+  const extraItemCount = orderItems.length - sentItems.length;
+  const alreadySent = sentItems.length > 0;
 
   const confirming = createOrderMutation.isPending || updateOrderMutation.isPending;
 
@@ -165,8 +187,10 @@ const POSView: React.FC = () => {
       } else {
         await createOrderMutation.mutateAsync(payload);
       }
+      setSentItems(orderItems);
       setConfirmOk('Orden enviada a la cuenta del cliente');
       setIsOrderSheetOpen(false);
+      window.setTimeout(() => setConfirmOk(null), 4000);
     } catch (err) {
       setConfirmError(err instanceof Error ? err.message : 'No se pudo confirmar la orden');
     }
@@ -288,34 +312,67 @@ const POSView: React.FC = () => {
             />
           </div>
 
-          <button
-            onClick={handleConfirmOrder}
-            disabled={confirming || orderItems.length === 0}
-            className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium px-4 py-3 rounded-md"
-          >
-            {confirming ? 'Enviando...' : 'Confirmar orden'}
-          </button>
+          {hasPendingChanges && (
+            <button
+              onClick={handleConfirmOrder}
+              disabled={confirming || orderItems.length === 0}
+              className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium px-4 py-3 rounded-md"
+            >
+              {confirming
+                ? 'Enviando...'
+                : alreadySent
+                  ? 'Actualizar cuenta'
+                  : 'Confirmar orden'}
+            </button>
+          )}
         </div>
       </GenericModalSheet>
 
-      {orderItems.length > 0 && (
+      {(hasPendingChanges || confirmOk) && (
         <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 shadow-lg z-40">
           <div className="container mx-auto max-w-2xl">
             {confirmError && <p className="text-sm text-red-600 mb-2">{confirmError}</p>}
-            {confirmOk && <p className="text-sm text-green-700 mb-2">{confirmOk}</p>}
-            <div className="flex items-center justify-between gap-4">
-              <div>
-                <div className="text-sm text-gray-500">{orderItems.length} item{orderItems.length !== 1 ? 's' : ''}</div>
-                <div className="text-lg font-semibold">{formatPrice(calculateFullOrderTotal())}</div>
+            {confirmOk && !hasPendingChanges && (
+              <p className="text-sm text-green-700">{confirmOk} · {formatPrice(sentTotal)}</p>
+            )}
+            {hasPendingChanges && (
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  {alreadySent ? (
+                    <>
+                      <div className="text-sm text-gray-600">
+                        {extraItemCount > 0
+                          ? `Vas a agregar ${extraItemCount} item${extraItemCount !== 1 ? 's' : ''}`
+                          : extraItemCount < 0
+                            ? `Vas a quitar ${Math.abs(extraItemCount)} item${Math.abs(extraItemCount) !== 1 ? 's' : ''}`
+                            : 'Cambios pendientes'}
+                      </div>
+                      <div className="text-base font-medium text-gray-900">
+                        La cuenta pasará de {formatPrice(sentTotal)} a {formatPrice(draftTotal)}
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="text-sm text-gray-500">
+                        {orderItems.length} item{orderItems.length !== 1 ? 's' : ''}
+                      </div>
+                      <div className="text-lg font-semibold">{formatPrice(draftTotal)}</div>
+                    </>
+                  )}
+                </div>
+                <button
+                  onClick={handleConfirmOrder}
+                  disabled={confirming || orderItems.length === 0}
+                  className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-medium px-6 py-3 rounded-md shrink-0"
+                >
+                  {confirming
+                    ? 'Enviando...'
+                    : alreadySent
+                      ? 'Actualizar cuenta'
+                      : 'Confirmar orden'}
+                </button>
               </div>
-              <button
-                onClick={handleConfirmOrder}
-                disabled={confirming}
-                className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-medium px-6 py-3 rounded-md"
-              >
-                {confirming ? 'Enviando...' : 'Confirmar orden'}
-              </button>
-            </div>
+            )}
           </div>
         </div>
       )}
