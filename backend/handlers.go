@@ -651,6 +651,26 @@ func (app *App) processPaymentCharge(c *gin.Context) {
 		return
 	}
 
+	// Local/dev: no Openpay keys → complete the charge without calling Openpay
+	// so staff can walk the diner happy path. Production must set credentials.
+	if app.Config.OpenpayMerchantID == "" || app.Config.OpenpayPrivateKey == "" {
+		txID := "mock_" + uuid.New().String()
+		payment.Status = "completed"
+		payment.TransactionID = txID
+		app.DB.Save(&payment)
+		app.DB.Model(&order).Update("status", "paid")
+		app.Logger.Warn().
+			Str("order_id", req.OrderID).
+			Str("transaction_id", txID).
+			Msg("Openpay unset; completing mock payment")
+		c.JSON(http.StatusOK, PaymentChargeResponse{
+			Success:       true,
+			TransactionID: txID,
+			Message:       "Pago de prueba (Openpay no configurado)",
+		})
+		return
+	}
+
 	// Initialize Openpay service
 	openpayService := NewOpenpayService(
 		app.Config.OpenpayMerchantID,
