@@ -381,6 +381,8 @@ func (app *App) getAllQRSessions(c *gin.Context) {
 				// Parse items from JSON string
 				var items []OrderItem
 				if err := json.Unmarshal([]byte(order.Items), &items); err == nil {
+					paidIDs, _ := completedPaidItemIDs(app.DB, order.ID)
+					sessionData["paid_item_ids"] = paidIDs
 					sessionData["order"] = map[string]interface{}{
 						"id":         order.ID,
 						"items":      items,

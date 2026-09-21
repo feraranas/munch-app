@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import * as Sentry from '@sentry/react';
 import { useQRSession, useMenuItems, useCreateOrder, useUpdateOrder } from '../hooks/useQueries';
 import { QRSession } from '../services/api';
+import { paidItemCount, tablePayState } from '../utils/tablePayState';
 import OrderItemsList, { MenuItem, OrderItem, Topping } from './OrderItemsList';
 import ActiveOrderItemsList from './ActiveOrderItemsList';
 // import ModalSheet from './ModalSheet'; // Kept for reference, not currently used
@@ -58,6 +59,7 @@ const POSView: React.FC = () => {
       id: sessionData.qr_id,
       table_number: sessionData.table_number,
       has_order: sessionData.has_order,
+      paid_item_ids: sessionData.paid_item_ids,
       order: sessionData.order,
       created_at: 0, // Not provided by API, using default
       updated_at: 0, // Not provided by API, using default
@@ -84,14 +86,27 @@ const POSView: React.FC = () => {
   };
 
   const getStatusColor = (session: QRSession) => {
-    if (!session.has_order) return 'bg-gray-100 text-gray-600'; // Gray for no order
-    if (session.order?.status === 'paid') return 'bg-green-500 text-white'; // Green for paid
-    return 'bg-sky text-white'; // Blue for active order
-};
+    switch (tablePayState(session)) {
+      case 'none':
+        return 'bg-gray-100 text-gray-600';
+      case 'paid':
+        return 'bg-green-500 text-white';
+      case 'partial':
+        return 'bg-amber-400 text-gray-900';
+      default:
+        return 'bg-sky text-white';
+    }
+  };
 
   const getStatusText = (session: QRSession) => {
-    if (!session.has_order) return 'Sin orden';
-    if (session.order?.status === 'paid') return 'Pagado';
+    const state = tablePayState(session);
+    if (state === 'none') return 'Sin orden';
+    if (state === 'paid') return 'Pagado';
+    if (state === 'partial') {
+      const paid = paidItemCount(session);
+      const total = session.order?.items.length || 0;
+      return `Pago parcial ${paid}/${total}`;
+    }
     return 'Orden activa';
   };
 
