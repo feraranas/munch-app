@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 
@@ -226,16 +227,120 @@ func (app *App) createOrder(c *gin.Context) {
 	c.JSON(http.StatusCreated, order)
 }
 
-// Get available menu items for waitstaff (from menu_items store)
+type publicMenuItem struct {
+	ID       string    `json:"id"`
+	Name     string    `json:"name"`
+	Price    float64   `json:"price"`
+	Toppings []Topping `json:"toppings,omitempty"`
+}
+
+func toPublicMenuItems(items []MenuItem) []publicMenuItem {
+	out := make([]publicMenuItem, 0, len(items))
+	for _, it := range items {
+		out = append(out, publicMenuItem{
+			ID:       it.ID,
+			Name:     it.Name,
+			Price:    it.Price,
+			Toppings: it.Toppings,
+		})
+	}
+	return out
+}
+
+func writeMenuError(c *gin.Context, err error) {
+	switch {
+	case errors.Is(err, ErrMenuValidation):
+		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	case errors.Is(err, ErrMenuConflict):
+		c.JSON(http.StatusConflict, gin.H{"error": err.Error()})
+	case errors.Is(err, ErrMenuNotFound):
+		c.JSON(http.StatusNotFound, gin.H{"error": err.Error()})
+	default:
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to update menu catalog"})
+	}
+}
+
+type createMenuItemRequest struct {
+	ID       string    `json:"id"`
+	Name     string    `json:"name"`
+	Price    float64   `json:"price"`
+	Toppings []Topping `json:"toppings"`
+}
+
+type updateMenuItemRequest struct {
+	Name     *string    `json:"name"`
+	Price    *float64   `json:"price"`
+	Toppings *[]Topping `json:"toppings"`
+	Active   *bool      `json:"active"`
+}
+
+// Get available menu items for diners/POS (active rows only).
 func (app *App) getMenuItems(c *gin.Context) {
-	items, err := listMenuItems(app.DB)
+	items, err := listActiveMenuItems(app.DB)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch menu items"})
 		return
 	}
 	c.JSON(http.StatusOK, gin.H{
-		"items": items,
+		"items": toPublicMenuItems(items),
 	})
+}
+
+func (app *App) getAdminMenuItems(c *gin.Context) {
+	items, err := listAllMenuItems(app.DB)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to fetch menu items"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"items": items})
+}
+
+func (app *App) createMenuItemHandler(c *gin.Context) {
+	var req createMenuItemRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request: " + err.Error()})
+		return
+	}
+	item, err := createMenuItem(app.DB, MenuItem{
+		ID:       req.ID,
+		Name:     req.Name,
+		Price:    req.Price,
+		Toppings: req.Toppings,
+	})
+	if err != nil {
+		writeMenuError(c, err)
+		return
+	}
+	c.JSON(http.StatusCreated, item)
+}
+
+func (app *App) updateMenuItemHandler(c *gin.Context) {
+	id := c.Param("id")
+	var req updateMenuItemRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid request: " + err.Error()})
+		return
+	}
+	item, err := updateMenuItem(app.DB, id, MenuItemUpdate{
+		Name:     req.Name,
+		Price:    req.Price,
+		Toppings: req.Toppings,
+		Active:   req.Active,
+	})
+	if err != nil {
+		writeMenuError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, item)
+}
+
+func (app *App) archiveMenuItemHandler(c *gin.Context) {
+	id := c.Param("id")
+	if err := archiveMenuItem(app.DB, id); err != nil {
+		writeMenuError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"id": id, "active": false})
 }
 
 // Get all QR sessions for admin dashboard

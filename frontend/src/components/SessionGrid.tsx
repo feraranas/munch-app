@@ -1,5 +1,5 @@
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { QRSession } from '../services/api';
 
 interface SessionGridProps {
@@ -43,7 +43,7 @@ const SessionGrid: React.FC<SessionGridProps> = ({ sessions }) => {
         return (
             <div className="text-center py-10 text-gray-500">
                 <h3 className="text-lg font-medium mb-2">No hay sesiones QR</h3>
-                <p>Crea códigos QR desde el <a href="/admin/qr" className="text-blue-500 hover:text-blue-600 underline">Generador de QR</a></p>
+                <p>Crea códigos QR desde el <Link to="/admin/qr" className="text-blue-500 hover:text-blue-600 underline">Generador de QR</Link></p>
             </div>
         );
     }

@@ -71,12 +71,14 @@ type Topping struct {
 
 // MenuItem is a catalog entry stored in menu_items (not hardcoded in handlers).
 // JSON tags keep GET /api/menu/items compatible with the frontend MenuItem shape.
+// Archive is Active=false (soft-delete); orders still reference the id.
 type MenuItem struct {
 	ID        string    `json:"id" gorm:"primaryKey"`
 	Name      string    `json:"name" gorm:"not null"`
 	Price     float64   `json:"price" gorm:"not null"`
 	Toppings  []Topping `json:"toppings,omitempty" gorm:"serializer:json"`
 	SortOrder int       `json:"-" gorm:"not null;default:0"`
+	Active    bool      `json:"active" gorm:"not null;default:true"`
 	CreatedAt int64     `json:"-" gorm:"autoCreateTime"`
 	UpdatedAt int64     `json:"-" gorm:"autoUpdateTime"`
 }

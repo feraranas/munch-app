@@ -24,6 +24,11 @@ export interface MenuItem {
   id: string;
   name: string;
   price: number;
+  toppings?: { name: string; price: number }[];
+}
+
+export interface AdminMenuItem extends MenuItem {
+  active: boolean;
 }
 
 export interface OrderItem {
@@ -59,12 +64,39 @@ export interface MenuItemsResponse {
   items: MenuItem[];
 }
 
+export interface AdminMenuItemsResponse {
+  items: AdminMenuItem[];
+}
+
+export interface CreateMenuItemPayload {
+  id?: string;
+  name: string;
+  price: number;
+}
+
+export interface UpdateMenuItemPayload {
+  name?: string;
+  price?: number;
+  active?: boolean;
+}
+
 export interface QRSessionResponse {
   qr_id: string;
   table_number?: string;
   has_order: boolean;
   message?: string;
   order?: Order;
+}
+
+export interface CreateQRSessionPayload {
+  tableNumber?: string;
+}
+
+export interface CreateQRSessionResponse {
+  qrCodeUrl: string;
+  qrId: string;
+  checkUrl: string;
+  tableNumber?: string;
 }
 
 export interface CreateOrderPayload {
@@ -101,6 +133,58 @@ export const fetchMenuItems = async (): Promise<MenuItem[]> => {
   return data.items;
 };
 
+export const fetchAdminMenuItems = async (): Promise<AdminMenuItem[]> => {
+  const response = await fetch(api.adminMenuItems(), {
+    headers: getAuthHeaders(),
+  });
+  if (!response.ok) {
+    throw new Error(`Failed to fetch admin menu items: ${response.statusText}`);
+  }
+  const data: AdminMenuItemsResponse = await response.json();
+  return data.items || [];
+};
+
+export const createMenuItem = async (payload: CreateMenuItemPayload): Promise<AdminMenuItem> => {
+  const response = await fetch(api.menuItems(), {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || 'Failed to create menu item');
+  }
+  return response.json();
+};
+
+export const updateMenuItem = async (
+  id: string,
+  payload: UpdateMenuItemPayload
+): Promise<AdminMenuItem> => {
+  const response = await fetch(api.menuItem(id), {
+    method: 'PUT',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || 'Failed to update menu item');
+  }
+  return response.json();
+};
+
+export const archiveMenuItem = async (id: string): Promise<{ id: string; active: boolean }> => {
+  const response = await fetch(api.menuItem(id), {
+    method: 'DELETE',
+    headers: getAuthHeaders(),
+  });
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || 'Failed to archive menu item');
+  }
+  return response.json();
+};
+
 export const fetchAllSessions = async (): Promise<QRSession[]> => {
   const response = await fetch(api.adminSessions(), {
     headers: getAuthHeaders(),
@@ -111,6 +195,21 @@ export const fetchAllSessions = async (): Promise<QRSession[]> => {
   const data: SessionsResponse = await response.json();
   // Defensive check: return empty array if sessions is null/undefined
   return data.sessions || [];
+};
+
+export const createQRSession = async (
+  payload: CreateQRSessionPayload
+): Promise<CreateQRSessionResponse> => {
+  const response = await fetch(api.createQr(), {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || 'Failed to create QR session');
+  }
+  return response.json();
 };
 
 export const fetchQRSession = async (qrId: string): Promise<QRSessionResponse> => {

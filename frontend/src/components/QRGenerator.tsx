@@ -1,38 +1,21 @@
 import React, { useState } from 'react';
 import * as Sentry from '@sentry/react';
 import Logo from './Logo';
-interface QRResponse {
-  qrCodeUrl: string;
-  qrId: string;
-  checkUrl: string;
-  tableNumber?: string;
-}
+import { createQRSession, CreateQRSessionResponse } from '../services/api';
 
 const QRGenerator: React.FC = () => {
   const [tableNumber, setTableNumber] = useState<string>('');
-  const [qrSession, setQrSession] = useState<QRResponse | null>(null);
+  const [qrSession, setQrSession] = useState<CreateQRSessionResponse | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
-  
-  const createQRSession = async () => {
+
+  const handleCreate = async () => {
     setLoading(true);
     try {
-      const response = await fetch('http://localhost:8080/api/qr/create', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ tableNumber: tableNumber.trim() }),
-      });
-      
-      if (response.ok) {
-        const data: QRResponse = await response.json();
-        setQrSession(data);
-      } else {
-        alert('Failed to create QR session');
-      }
+      const data = await createQRSession({ tableNumber: tableNumber.trim() });
+      setQrSession(data);
     } catch (error) {
       console.error('Error creating QR session:', error);
-      alert('Error connecting to backend. Make sure the Go server is running on port 8080.');
+      alert(error instanceof Error ? error.message : 'Failed to create QR session');
     }
     setLoading(false);
   };
@@ -67,7 +50,7 @@ const QRGenerator: React.FC = () => {
 
         <button 
           className="btn" 
-          onClick={createQRSession}
+          onClick={handleCreate}
           disabled={loading}
         >
           {loading ? 'Creando QR...' : '🖼️ Crear QR Permanente'}
