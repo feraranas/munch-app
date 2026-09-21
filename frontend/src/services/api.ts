@@ -105,6 +105,7 @@ export interface CreateOrderPayload {
     id: string;
     menuId: string;
     qty: number;
+    toppings?: { name: string; price: number }[];
   }[];
 }
 

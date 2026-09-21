@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import * as Sentry from '@sentry/react';
-import { useQRSession, useMenuItems } from '../hooks/useQueries';
+import { useQRSession, useMenuItems, useCreateOrder, useUpdateOrder } from '../hooks/useQueries';
 import { QRSession } from '../services/api';
 import OrderItemsList, { MenuItem, OrderItem, Topping } from './OrderItemsList';
 import ActiveOrderItemsList from './ActiveOrderItemsList';
@@ -32,7 +32,10 @@ const POSView: React.FC = () => {
   // Use TanStack Query hooks for data fetching
   const { data: sessionData, isLoading: sessionLoading, error: sessionError } = useQRSession(tableId);
   const { data: menuItems = [], isLoading: menuLoading } = useMenuItems();
-  // const createOrderMutation = useCreateOrder(); // Uncomment when order confirmation is needed
+  const createOrderMutation = useCreateOrder();
+  const updateOrderMutation = useUpdateOrder();
+  const [confirmError, setConfirmError] = useState<string | null>(null);
+  const [confirmOk, setConfirmOk] = useState<string | null>(null);
 
   // Convert QRSessionResponse to QRSession format
   const session: QRSession | null = useMemo(() => {
@@ -136,37 +139,38 @@ const POSView: React.FC = () => {
     }, 0);
   };
 
-  // Kept for future use when order confirmation is needed
-  // const handleConfirmOrder = async () => {
-  //   if (!session || orderItems.length === 0) {
-  //     console.error('Cannot create order: missing session or empty cart');
-  //     return;
-  //   }
+  const confirming = createOrderMutation.isPending || updateOrderMutation.isPending;
 
-  //   createOrderMutation.mutate(
-  //     {
-  //       qrId: session.id,
-  //       selectedItems: orderItems.map(item => ({
-  //         id: item.id,
-  //         menuId: item.menuId,
-  //         qty: item.qty,
-  //         toppings: item.toppings || []
-  //       }))
-  //     },
-  //     {
-  //       onSuccess: (data) => {
-  //         // Clear the cart after successful order creation
-  //         setOrderItems([]);
-  //         
-  //         // Show success feedback
-  //         alert(`¡Orden creada exitosamente! ID: ${data.id}`);
-  //       },
-  //       onError: (error) => {
-  //         alert(`Error al crear la orden: ${error.message || 'Error desconocido'}`);
-  //       }
-  //     }
-  //   );
-  // };
+  const handleConfirmOrder = async () => {
+    if (!session || orderItems.length === 0) {
+      return;
+    }
+
+    setConfirmError(null);
+    setConfirmOk(null);
+
+    const payload = {
+      qrId: session.id,
+      selectedItems: orderItems.map((item) => ({
+        id: item.id,
+        menuId: item.menuId,
+        qty: item.qty,
+        toppings: item.toppings || [],
+      })),
+    };
+
+    try {
+      if (session.has_order) {
+        await updateOrderMutation.mutateAsync(payload);
+      } else {
+        await createOrderMutation.mutateAsync(payload);
+      }
+      setConfirmOk('Orden enviada a la cuenta del cliente');
+      setIsOrderSheetOpen(false);
+    } catch (err) {
+      setConfirmError(err instanceof Error ? err.message : 'No se pudo confirmar la orden');
+    }
+  };
 
   const isLoading = sessionLoading || menuLoading;
   const error = sessionError;
@@ -283,8 +287,38 @@ const POSView: React.FC = () => {
               onRemoveItem={removeOrderItem}
             />
           </div>
+
+          <button
+            onClick={handleConfirmOrder}
+            disabled={confirming || orderItems.length === 0}
+            className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium px-4 py-3 rounded-md"
+          >
+            {confirming ? 'Enviando...' : 'Confirmar orden'}
+          </button>
         </div>
       </GenericModalSheet>
+
+      {orderItems.length > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 shadow-lg z-40">
+          <div className="container mx-auto max-w-2xl">
+            {confirmError && <p className="text-sm text-red-600 mb-2">{confirmError}</p>}
+            {confirmOk && <p className="text-sm text-green-700 mb-2">{confirmOk}</p>}
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <div className="text-sm text-gray-500">{orderItems.length} item{orderItems.length !== 1 ? 's' : ''}</div>
+                <div className="text-lg font-semibold">{formatPrice(calculateFullOrderTotal())}</div>
+              </div>
+              <button
+                onClick={handleConfirmOrder}
+                disabled={confirming}
+                className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-medium px-6 py-3 rounded-md"
+              >
+                {confirming ? 'Enviando...' : 'Confirmar orden'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal Sheet - show total order value (Original - kept for reference) */}
       {/* <ModalSheet
