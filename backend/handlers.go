@@ -497,10 +497,6 @@ func (app *App) POSOrder(c *gin.Context) {
 		return
 	}
 
-	// Debug: Log what we received
-	for i, item := range req.SelectedItems {
-	}
-
 	// First, verify the QR session exists
 	var qrSession QRSession
 	result := app.DB.First(&qrSession, "id = ?", req.QRID)
