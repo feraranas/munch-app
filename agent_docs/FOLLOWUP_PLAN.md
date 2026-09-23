@@ -16,6 +16,9 @@
 | [#39](https://github.com/feraranas/munch-app/pull/39) | README port/docs drift | Frontend `:3000`, Grafana `:3001` |
 | [#40](https://github.com/feraranas/munch-app/pull/40) | Persist WS item claims | `item_claims` + ClaimStore; Codex P1/P2 addressed (payment clear, mem/DB serialize, validate, TTL/reclaim, eviction unload) |
 | [#41](https://github.com/feraranas/munch-app/pull/41) | Menu as data | `menu_items` table + seed; handlers list/price from store |
+| [#43](https://github.com/feraranas/munch-app/pull/43) | Menu write path | JWT staff create/update/archive; `/admin/menu`; tests |
+| [#44](https://github.com/feraranas/munch-app/pull/44) | QR / POS confirm / split pay / local mock | Charge selected `item_ids`; Pago parcial; mock without Openpay keys |
+| [#45](https://github.com/feraranas/munch-app/pull/45) | Handoff links + POSOrder debug cleanup | AGENTS/README → FOLLOWUP_PLAN; drop debug printfs |
 
 **Constraints from prior loops**
 - Cloud Agents may be unavailable (plan); GitHub API (branch → push → PR) is an acceptable path for scoped work.
@@ -26,7 +29,7 @@
 
 ## Next goals (priority order)
 
-### 1. Menu write path (recommended next `/goal`)
+### 1. Menu write path — **DONE** (PR #43)
 
 **Why:** Catalog is in DB, but ops still need SQL to change prices/names. Without writes, “no deploy for menu changes” is incomplete.
 
@@ -45,7 +48,7 @@ Add authenticated staff/admin API (and a small UI if natural) to create, update,
 
 ---
 
-### 2. Apple Pay beside Openpay (design → then implement)
+### 2. Apple Pay beside Openpay (design → then implement) — **design doc:** [`APPLE_PAY.md`](APPLE_PAY.md)
 
 **Context today**
 - Frontend: Openpay.js card tokenize (`useOpenpay.ts`) → `POST /api/payments/charge` with `{order_id, token_id, device_session_id}`.
@@ -68,9 +71,9 @@ Diner can pay their claimed share via Apple Pay on iPhone Safari; `Payment` row 
 
 ---
 
-### 3. Branch hygiene
+### 3. Branch hygiene — **mostly done** (2026-09-23)
 
-~23 long-lived topic branches with **no open PRs** remain. GitHub MCP has no delete-ref; box `gh` may be unauthenticated.
+Stale topic branches were deleted; after merging #44/#45 only `main` remained. Re-check `git ls-remote --heads` before deleting anything new.
 
 **Keep:** `main`, recent work branches still useful (`feat/menu-as-data`, `persist-ws-item-claims`, `fix/readme-port-docs-drift`, `docs/followup-plan` if open).
 
@@ -98,11 +101,11 @@ Repo: https://github.com/feraranas/munch-app
 Read: agent_docs/FOLLOWUP_PLAN.md (or git tag followup/2026-09-20)
 
 /goal
-<pick §1 Menu write path unless Ferdinand says otherwise>
+<pick Apple Pay implementation only after Openpay confirmation + APPLE_PAY.md; else ops secret rotation>
 
 Follow the proof checklist in that section. Open a PR against main.
 Prefer GitHub remote edits if Cloud Agents are unavailable.
-Do not start TanStack or Apple Pay implementation without explicit ask / Openpay confirmation.
+Do not start TanStack or Apple Pay implementation without explicit ask / Openpay confirmation (see APPLE_PAY.md).
 ```
 
 ---
