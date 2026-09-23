@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { QRSession } from '../services/api';
+import { paidItemCount, remainingTotal, tablePayState } from '../utils/tablePayState';
 
 interface SessionGridProps {
     sessions: QRSession[];
@@ -28,14 +29,27 @@ const SessionGrid: React.FC<SessionGridProps> = ({ sessions }) => {
     };
 
     const getStatusColor = (session: QRSession) => {
-        if (!session.has_order) return 'bg-gray-100 text-gray-600'; // Gray for no order
-        if (session.order?.status === 'paid') return 'bg-green-500 text-white'; // Green for paid
-        return 'bg-sky text-white'; // Blue for active order
+        switch (tablePayState(session)) {
+            case 'none':
+                return 'bg-gray-100 text-gray-600';
+            case 'paid':
+                return 'bg-green-500 text-white';
+            case 'partial':
+                return 'bg-amber-400 text-gray-900';
+            default:
+                return 'bg-sky text-white';
+        }
     };
 
     const getStatusText = (session: QRSession) => {
-        if (!session.has_order) return 'Sin orden';
-        if (session.order?.status === 'paid') return 'Pagado';
+        const state = tablePayState(session);
+        if (state === 'none') return 'Sin orden';
+        if (state === 'paid') return 'Pagado';
+        if (state === 'partial') {
+            const paid = paidItemCount(session);
+            const total = session.order?.items.length || 0;
+            return `Pago parcial ${paid}/${total}`;
+        }
         return 'Orden activa';
     };
 
@@ -86,6 +100,11 @@ const SessionGrid: React.FC<SessionGridProps> = ({ sessions }) => {
                     <div className="text-base font-semibold mb-3">
                         <strong>Total:</strong> {session.has_order && session.order ? formatPrice(session.order.total) : '$0.00'}
                     </div>
+                    {tablePayState(session) === 'partial' && (
+                        <div className="text-sm mb-3 text-amber-700">
+                            <strong>Restan:</strong> {formatPrice(remainingTotal(session))}
+                        </div>
+                    )}
 
                     {/* Row 4: Created at */}
                     <div className="text-xs text-gray-500">

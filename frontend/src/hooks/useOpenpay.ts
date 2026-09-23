@@ -25,12 +25,21 @@ interface UseOpenpayReturn {
  * Hook to interact with the Openpay.js SDK
  * Initializes the SDK and provides wrapped methods for token creation and validation
  */
+const mockPayments =
+  !config.openpay.merchantId || !config.openpay.publicApiKey;
+
 export const useOpenpay = (): UseOpenpayReturn => {
-  const [isReady, setIsReady] = useState(false);
+  const [isReady, setIsReady] = useState(mockPayments);
   const [error, setError] = useState<string | null>(null);
 
   // Initialize Openpay SDK
   useEffect(() => {
+    if (mockPayments) {
+      setIsReady(true);
+      setError(null);
+      return;
+    }
+
     const initializeOpenpay = () => {
       if (!window.OpenPay) {
         setError('Openpay SDK no está disponible. Verifica la conexión a internet.');
@@ -83,6 +92,13 @@ export const useOpenpay = (): UseOpenpayReturn => {
       onSuccess: (tokenId: string, response: OpenPaySuccessResponse) => void,
       onError: (errorMessage: string, response: OpenPayErrorResponse) => void
     ) => {
+      if (mockPayments) {
+        onSuccess('tok_mock_local', {
+          data: { id: 'tok_mock_local' },
+        } as OpenPaySuccessResponse);
+        return;
+      }
+
       if (!isReady || !window.OpenPay) {
         onError('Openpay SDK no está listo', {} as OpenPayErrorResponse);
         return;
@@ -138,6 +154,10 @@ export const useOpenpay = (): UseOpenpayReturn => {
    * Validate card number using Luhn algorithm
    */
   const validateCardNumber = useCallback((cardNumber: string): boolean => {
+    if (mockPayments) {
+      const digits = cardNumber.replace(/\D/g, '');
+      return digits.length >= 13 && digits.length <= 19;
+    }
     if (!window.OpenPay) return false;
     return window.OpenPay.card.validateCardNumber(cardNumber);
   }, []);
@@ -146,6 +166,9 @@ export const useOpenpay = (): UseOpenpayReturn => {
    * Validate CVC/CVV code
    */
   const validateCVC = useCallback((cvc: string, cardNumber?: string): boolean => {
+    if (mockPayments) {
+      return /^\d{3,4}$/.test(cvc);
+    }
     if (!window.OpenPay) return false;
     return window.OpenPay.card.validateCVC(cvc, cardNumber);
   }, []);
@@ -154,6 +177,15 @@ export const useOpenpay = (): UseOpenpayReturn => {
    * Validate expiration date
    */
   const validateExpiry = useCallback((month: string, year: string): boolean => {
+    if (mockPayments) {
+      const m = Number(month);
+      const y = Number(year);
+      if (m < 1 || m > 12 || year.length !== 2) return false;
+      const fullYear = 2000 + y;
+      const now = new Date();
+      const exp = new Date(fullYear, m, 0);
+      return exp >= new Date(now.getFullYear(), now.getMonth(), 1);
+    }
     if (!window.OpenPay) return false;
     return window.OpenPay.card.validateExpiry(month, year);
   }, []);
@@ -162,6 +194,12 @@ export const useOpenpay = (): UseOpenpayReturn => {
    * Get card brand/type from card number
    */
   const getCardType = useCallback((cardNumber: string): string => {
+    if (mockPayments) {
+      const digits = cardNumber.replace(/\D/g, '');
+      if (digits.startsWith('4')) return 'visa';
+      if (digits.startsWith('5')) return 'mastercard';
+      return '';
+    }
     if (!window.OpenPay) return '';
     return window.OpenPay.card.cardType(cardNumber);
   }, []);

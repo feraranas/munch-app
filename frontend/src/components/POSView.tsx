@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import * as Sentry from '@sentry/react';
-import { useQRSession, useMenuItems } from '../hooks/useQueries';
+import { useQRSession, useMenuItems, useCreateOrder, useUpdateOrder } from '../hooks/useQueries';
 import { QRSession } from '../services/api';
+import { paidItemCount, tablePayState } from '../utils/tablePayState';
 import OrderItemsList, { MenuItem, OrderItem, Topping } from './OrderItemsList';
 import ActiveOrderItemsList from './ActiveOrderItemsList';
 // import ModalSheet from './ModalSheet'; // Kept for reference, not currently used
@@ -19,10 +20,25 @@ interface ToppingSelectionModal {
   selectedToppings: Topping[];
 }
 
+const lineTotal = (item: OrderItem) => {
+  const toppingsPrice = item.toppings?.reduce((sum, t) => sum + t.price, 0) || 0;
+  return (item.price + toppingsPrice) * item.qty;
+};
+
+const itemsTotal = (items: OrderItem[]) => items.reduce((sum, item) => sum + lineTotal(item), 0);
+
+const itemsFingerprint = (items: OrderItem[]) =>
+  items
+    .map((item) => `${item.menuId}:${item.id}:${item.qty}`)
+    .sort()
+    .join('|');
+
 const POSView: React.FC = () => {
   const { tableId } = useParams<keyof RouteParams>() as RouteParams;
   const navigate = useNavigate();
   const [orderItems, setOrderItems] = useState<OrderItem[]>([]);
+  const [sentItems, setSentItems] = useState<OrderItem[]>([]);
+  const [hydrated, setHydrated] = useState(false);
   const [isOrderSheetOpen, setIsOrderSheetOpen] = useState(false);
   const [toppingModal, setToppingModal] = useState<ToppingSelectionModal>({
     menuItem: null,
@@ -32,7 +48,10 @@ const POSView: React.FC = () => {
   // Use TanStack Query hooks for data fetching
   const { data: sessionData, isLoading: sessionLoading, error: sessionError } = useQRSession(tableId);
   const { data: menuItems = [], isLoading: menuLoading } = useMenuItems();
-  // const createOrderMutation = useCreateOrder(); // Uncomment when order confirmation is needed
+  const createOrderMutation = useCreateOrder();
+  const updateOrderMutation = useUpdateOrder();
+  const [confirmError, setConfirmError] = useState<string | null>(null);
+  const [confirmOk, setConfirmOk] = useState<string | null>(null);
 
   // Convert QRSessionResponse to QRSession format
   const session: QRSession | null = useMemo(() => {
@@ -40,18 +59,24 @@ const POSView: React.FC = () => {
       id: sessionData.qr_id,
       table_number: sessionData.table_number,
       has_order: sessionData.has_order,
+      paid_item_ids: sessionData.paid_item_ids,
       order: sessionData.order,
       created_at: 0, // Not provided by API, using default
       updated_at: 0, // Not provided by API, using default
     } : null;
   }, [sessionData]);
 
-  // Initialize orderItems from session data when it loads
+  // Hydrate once from the saved order. Do not overwrite waiter edits on poll.
   useEffect(() => {
-    if (session?.order?.items) {
-      setOrderItems(session.order.items);
+    if (hydrated || !session) {
+      return;
     }
-  }, [session]);
+    if (session.order?.items) {
+      setOrderItems(session.order.items);
+      setSentItems(session.order.items);
+    }
+    setHydrated(true);
+  }, [session, hydrated]);
 
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('es-MX', {
@@ -61,14 +86,27 @@ const POSView: React.FC = () => {
   };
 
   const getStatusColor = (session: QRSession) => {
-    if (!session.has_order) return 'bg-gray-100 text-gray-600'; // Gray for no order
-    if (session.order?.status === 'paid') return 'bg-green-500 text-white'; // Green for paid
-    return 'bg-sky text-white'; // Blue for active order
-};
+    switch (tablePayState(session)) {
+      case 'none':
+        return 'bg-gray-100 text-gray-600';
+      case 'paid':
+        return 'bg-green-500 text-white';
+      case 'partial':
+        return 'bg-amber-400 text-gray-900';
+      default:
+        return 'bg-sky text-white';
+    }
+  };
 
   const getStatusText = (session: QRSession) => {
-    if (!session.has_order) return 'Sin orden';
-    if (session.order?.status === 'paid') return 'Pagado';
+    const state = tablePayState(session);
+    if (state === 'none') return 'Sin orden';
+    if (state === 'paid') return 'Pagado';
+    if (state === 'partial') {
+      const paid = paidItemCount(session);
+      const total = session.order?.items.length || 0;
+      return `Pago parcial ${paid}/${total}`;
+    }
     return 'Orden activa';
   };
 
@@ -95,6 +133,7 @@ const POSView: React.FC = () => {
       qty: 1,
       toppings: toppings.length > 0 ? toppings : undefined
     };
+    setConfirmOk(null);
     setOrderItems(prev => [...prev, newOrderItem]);
   };
 
@@ -126,47 +165,51 @@ const POSView: React.FC = () => {
 
   // Remove a specific order item from the active order
   const removeOrderItem = (orderItem: OrderItem) => {
+    setConfirmOk(null);
     setOrderItems(prev => prev.filter(item => item.menuId !== orderItem.menuId));
   };
 
-  const calculateFullOrderTotal = () => {
-    return orderItems.reduce((total, item) => {
-      const toppingsPrice = item.toppings?.reduce((sum, t) => sum + t.price, 0) || 0;
-      return total + ((item.price + toppingsPrice) * item.qty);
-    }, 0);
+  const calculateFullOrderTotal = () => itemsTotal(orderItems);
+  const sentTotal = itemsTotal(sentItems);
+  const draftTotal = itemsTotal(orderItems);
+  const hasPendingChanges = itemsFingerprint(orderItems) !== itemsFingerprint(sentItems);
+  const extraItemCount = orderItems.length - sentItems.length;
+  const alreadySent = sentItems.length > 0;
+
+  const confirming = createOrderMutation.isPending || updateOrderMutation.isPending;
+
+  const handleConfirmOrder = async () => {
+    if (!session || orderItems.length === 0) {
+      return;
+    }
+
+    setConfirmError(null);
+    setConfirmOk(null);
+
+    const payload = {
+      qrId: session.id,
+      selectedItems: orderItems.map((item) => ({
+        id: item.id,
+        menuId: item.menuId,
+        qty: item.qty,
+        toppings: item.toppings || [],
+      })),
+    };
+
+    try {
+      if (session.has_order) {
+        await updateOrderMutation.mutateAsync(payload);
+      } else {
+        await createOrderMutation.mutateAsync(payload);
+      }
+      setSentItems(orderItems);
+      setConfirmOk('Orden enviada a la cuenta del cliente');
+      setIsOrderSheetOpen(false);
+      window.setTimeout(() => setConfirmOk(null), 4000);
+    } catch (err) {
+      setConfirmError(err instanceof Error ? err.message : 'No se pudo confirmar la orden');
+    }
   };
-
-  // Kept for future use when order confirmation is needed
-  // const handleConfirmOrder = async () => {
-  //   if (!session || orderItems.length === 0) {
-  //     console.error('Cannot create order: missing session or empty cart');
-  //     return;
-  //   }
-
-  //   createOrderMutation.mutate(
-  //     {
-  //       qrId: session.id,
-  //       selectedItems: orderItems.map(item => ({
-  //         id: item.id,
-  //         menuId: item.menuId,
-  //         qty: item.qty,
-  //         toppings: item.toppings || []
-  //       }))
-  //     },
-  //     {
-  //       onSuccess: (data) => {
-  //         // Clear the cart after successful order creation
-  //         setOrderItems([]);
-  //         
-  //         // Show success feedback
-  //         alert(`¡Orden creada exitosamente! ID: ${data.id}`);
-  //       },
-  //       onError: (error) => {
-  //         alert(`Error al crear la orden: ${error.message || 'Error desconocido'}`);
-  //       }
-  //     }
-  //   );
-  // };
 
   const isLoading = sessionLoading || menuLoading;
   const error = sessionError;
@@ -283,8 +326,71 @@ const POSView: React.FC = () => {
               onRemoveItem={removeOrderItem}
             />
           </div>
+
+          {hasPendingChanges && (
+            <button
+              onClick={handleConfirmOrder}
+              disabled={confirming || orderItems.length === 0}
+              className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium px-4 py-3 rounded-md"
+            >
+              {confirming
+                ? 'Enviando...'
+                : alreadySent
+                  ? 'Actualizar cuenta'
+                  : 'Confirmar orden'}
+            </button>
+          )}
         </div>
       </GenericModalSheet>
+
+      {(hasPendingChanges || confirmOk) && (
+        <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 p-4 shadow-lg z-40">
+          <div className="container mx-auto max-w-2xl">
+            {confirmError && <p className="text-sm text-red-600 mb-2">{confirmError}</p>}
+            {confirmOk && !hasPendingChanges && (
+              <p className="text-sm text-green-700">{confirmOk} · {formatPrice(sentTotal)}</p>
+            )}
+            {hasPendingChanges && (
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  {alreadySent ? (
+                    <>
+                      <div className="text-sm text-gray-600">
+                        {extraItemCount > 0
+                          ? `Vas a agregar ${extraItemCount} item${extraItemCount !== 1 ? 's' : ''}`
+                          : extraItemCount < 0
+                            ? `Vas a quitar ${Math.abs(extraItemCount)} item${Math.abs(extraItemCount) !== 1 ? 's' : ''}`
+                            : 'Cambios pendientes'}
+                      </div>
+                      <div className="text-base font-medium text-gray-900">
+                        La cuenta pasará de {formatPrice(sentTotal)} a {formatPrice(draftTotal)}
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="text-sm text-gray-500">
+                        {orderItems.length} item{orderItems.length !== 1 ? 's' : ''}
+                      </div>
+                      <div className="text-lg font-semibold">{formatPrice(draftTotal)}</div>
+                    </>
+                  )}
+                </div>
+                <button
+                  onClick={handleConfirmOrder}
+                  disabled={confirming || orderItems.length === 0}
+                  className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-medium px-6 py-3 rounded-md shrink-0"
+                >
+                  {confirming
+                    ? 'Enviando...'
+                    : alreadySent
+                      ? 'Actualizar cuenta'
+                      : 'Confirmar orden'}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Modal Sheet - show total order value (Original - kept for reference) */}
       {/* <ModalSheet

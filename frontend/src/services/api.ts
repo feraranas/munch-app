@@ -37,6 +37,7 @@ export interface OrderItem {
   name: string;
   price: number;
   qty: number;
+  toppings?: { name: string; price: number }[];
 }
 
 export interface Order {
@@ -53,6 +54,7 @@ export interface QRSession {
   created_at: number;
   updated_at: number;
   has_order: boolean;
+  paid_item_ids?: string[];
   order?: Order;
 }
 
@@ -84,6 +86,7 @@ export interface QRSessionResponse {
   qr_id: string;
   table_number?: string;
   has_order: boolean;
+  paid_item_ids?: string[];
   message?: string;
   order?: Order;
 }
@@ -105,12 +108,14 @@ export interface CreateOrderPayload {
     id: string;
     menuId: string;
     qty: number;
+    toppings?: { name: string; price: number }[];
   }[];
 }
 
 export interface PaymentChargePayload {
   token_id: string;
   order_id: string;
+  item_ids: string[];
   description: string;
   device_session_id?: string;
 }

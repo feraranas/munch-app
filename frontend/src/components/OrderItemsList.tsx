@@ -32,6 +32,7 @@ interface ConnectedUser {
 interface OrderItemsListProps {
   items: OrderItem[] | MenuItem[];
   selectedItems?: Set<string>;
+  paidItems?: Set<string>;
   itemSelections?: Map<string, string>;
   myUserId?: string | null;
   connectedUsers?: ConnectedUser[];
@@ -49,6 +50,7 @@ interface OrderItemsListProps {
 const OrderItemsList: React.FC<OrderItemsListProps> = React.memo(({
   items,
   selectedItems = new Set(),
+  paidItems = new Set(),
   itemSelections = new Map(),
   myUserId = null,
   connectedUsers = [],
@@ -75,7 +77,8 @@ const OrderItemsList: React.FC<OrderItemsListProps> = React.memo(({
         // For order mode, use menuId for selection; for menu mode, use id
         const itemKey = isOrderItem ? (item as OrderItem).menuId : item.id;
         const selectedByUserId = itemSelections.get(itemKey);
-        const isSelectedByMe = selectedItems.has(itemKey) || Boolean(myUserId && selectedByUserId === myUserId);
+        const isPaid = paidItems.has(itemKey);
+        const isSelectedByMe = !isPaid && (selectedItems.has(itemKey) || Boolean(myUserId && selectedByUserId === myUserId));
         // Only block when the claimer is currently connected. Abandoned claims
         // (tab closed → new fingerprint/user id) are reclaimable by live diners.
         const claimerConnected = Boolean(
@@ -100,21 +103,23 @@ const OrderItemsList: React.FC<OrderItemsListProps> = React.memo(({
           <React.Fragment key={itemKey}>
             <div 
               onClick={() => {
-                if (mode === 'order' && onItemSelection && !isSelectedByOther) {
+                if (mode === 'order' && onItemSelection && !isSelectedByOther && !isPaid) {
                   onItemSelection(itemKey);
                 }
               }}
               className={`
                 flex justify-between items-center py-2 my-0 transition-colors duration-200
                 ${mode === 'order' 
-                  ? isSelectedByMe 
+                  ? isPaid
+                    ? 'opacity-50'
+                    : isSelectedByMe 
                     ? 'border-l-4 border-green-500' 
                     : isSelectedByOther 
                       ? 'bg-light-gray border-l-4 border-gray-300 opacity-70' 
                       : 'hover:bg-gray-50'
                   : 'hover:bg-gray-50'
                 }
-                ${mode === 'order' && isSelectedByOther ? 'cursor-not-allowed' : 'cursor-pointer'}
+                ${mode === 'order' && (isSelectedByOther || isPaid) ? 'cursor-not-allowed' : 'cursor-pointer'}
                 ${mode === 'menu' ? 'bg-white px-1' : ''}
               `}
             >
@@ -166,8 +171,9 @@ const OrderItemsList: React.FC<OrderItemsListProps> = React.memo(({
               {/* Selection indicator for order mode */}
               {mode === 'order' && (
                 <>
-                  {isSelectedByMe ? (
-                    // Check Mark Circle - selected by me
+                  {isPaid ? (
+                    <span className="ml-2 text-xs font-medium text-green-700">Pagado</span>
+                  ) : isSelectedByMe ? (
                     <div className="ml-2 w-5 h-5 bg-green-500 rounded-full flex items-center justify-center">
                       <CheckMarkIcon 
                         width={10} 
@@ -177,7 +183,6 @@ const OrderItemsList: React.FC<OrderItemsListProps> = React.memo(({
                       />
                     </div>
                   ) : !isSelectedByOther ? (
-                    // Empty Mark Circle - clickable item cue
                     <div className="ml-2 w-5 h-5 border-2 border-gray-300 rounded-full flex items-center justify-center hover:border-gray-400 transition-colors duration-200">
                     </div>
                   ) : null}

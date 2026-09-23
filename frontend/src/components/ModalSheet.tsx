@@ -11,7 +11,7 @@ interface ModalSheetProps {
   paymentProcessing?: boolean;
   selectedItemsCount?: number;
   formatPrice: (price: number) => string;
-  onPayment?: (tokenId: string, deviceSessionId?: string) => void;
+  onPayment?: (tokenId: string, deviceSessionId?: string) => void | Promise<void>;
   onCancelPayment?: () => void;
   buttonText?: string;
   orderItems?: Array<{
@@ -39,8 +39,19 @@ function ModalSheet({
   onConfirmOrder
 }: ModalSheetProps) {
   const [isOpen, setOpen] = useState(false);
-  const onClickExpandModalCTA = () => setOpen(true);  
-  const onClickCloseModalCTA = () => setOpen(false);  
+  const [frozenTotal, setFrozenTotal] = useState(0);
+  const [frozenCount, setFrozenCount] = useState(0);
+  const onClickExpandModalCTA = () => {
+    setFrozenTotal(myTotal);
+    setFrozenCount(selectedItemsCount ?? 0);
+    setOpen(true);
+  };
+  const onClickCloseModalCTA = () => setOpen(false);
+
+  const handleConfirmPayment = async (tokenId: string, deviceSessionId?: string) => {
+    await onPayment?.(tokenId, deviceSessionId);
+    setOpen(false);
+  };  
 
   return (
     <>
@@ -150,12 +161,15 @@ function ModalSheet({
                   onPayment={onPayment ?? (() => {})}
                 /> */}
                 <PaymentForm
-                  myTotal={myTotal}
-                  selectedItemsCount={selectedItemsCount ?? 0}
+                  myTotal={frozenTotal}
+                  selectedItemsCount={frozenCount}
                   paymentProcessing={paymentProcessing ?? false}
                   formatPrice={formatPrice}
-                  onConfirmPayment={onPayment ?? ((tokenId: string, deviceSessionId?: string) => {})}
-                  onCancel={onCancelPayment ?? (() => {})}
+                  onConfirmPayment={handleConfirmPayment}
+                  onCancel={() => {
+                    onCancelPayment?.();
+                    onClickCloseModalCTA();
+                  }}
                 />
               </>
             )}

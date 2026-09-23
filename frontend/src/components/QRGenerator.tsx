@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import * as Sentry from '@sentry/react';
 import Logo from './Logo';
 import { createQRSession, CreateQRSessionResponse } from '../services/api';
@@ -27,6 +28,9 @@ const QRGenerator: React.FC = () => {
           <Logo width={50} height={50} />
           <h2 style={{ marginLeft: '12px', margin: '0' }}>🖼️ Generador de QR Permanente</h2>
         </div>
+        <p>
+          <Link to="/admin" style={{ color: '#007bff' }}>← Dashboard</Link>
+        </p>
         <p>Crea códigos QR permanentes para mesas del restaurante.</p>
         
         <div style={{ marginBottom: '20px' }}>

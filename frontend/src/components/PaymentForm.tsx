@@ -7,7 +7,7 @@ interface PaymentFormProps {
   selectedItemsCount: number;
   paymentProcessing: boolean;
   formatPrice: (price: number) => string;
-  onConfirmPayment: (tokenId: string, deviceSessionId?: string) => void;
+  onConfirmPayment: (tokenId: string, deviceSessionId?: string) => void | Promise<void>;
   onCancel: () => void;
 }
 
@@ -31,11 +31,11 @@ function PaymentForm({
   } = useOpenpay();
 
   // Form state
-  const [cardNumber, setCardNumber] = useState('');
-  const [holderName, setHolderName] = useState('');
-  const [expiryMonth, setExpiryMonth] = useState('');
-  const [expiryYear, setExpiryYear] = useState('');
-  const [cvv, setCvv] = useState('');
+  const [cardNumber, setCardNumber] = useState('4111111111111111');
+  const [holderName, setHolderName] = useState('JUAN PEREZ');
+  const [expiryMonth, setExpiryMonth] = useState('12');
+  const [expiryYear, setExpiryYear] = useState('28');
+  const [cvv, setCvv] = useState('123');
   const [deviceSessionId, setDeviceSessionId] = useState('');
 
   // Validation state
@@ -45,7 +45,7 @@ function PaymentForm({
   const [cvvError, setCvvError] = useState('');
 
   // UI state
-  const [cardBrand, setCardBrand] = useState('');
+  const [cardBrand, setCardBrand] = useState('visa');
   const [isProcessing, setIsProcessing] = useState(false);
   const [paymentError, setPaymentError] = useState('');
 
@@ -153,10 +153,10 @@ function PaymentForm({
     createToken(
       cardData,
       (tokenId) => {
-        // Success - pass token to parent for payment processing
         console.log('✅ Token created, processing payment...');
-        onConfirmPayment(tokenId, deviceSessionId || undefined);
-        setIsProcessing(false);
+        Promise.resolve(onConfirmPayment(tokenId, deviceSessionId || undefined))
+          .catch(() => undefined)
+          .finally(() => setIsProcessing(false));
       },
       (errorMessage) => {
         // Error
@@ -344,7 +344,10 @@ function PaymentForm({
         {/* Test Card Info */}
         {isReady && (
           <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md text-xs text-gray-700">
-            <strong>Tarjeta de prueba:</strong> 4111111111111111 | CVV: 123 | Fecha: 12/25
+            <strong>Tarjeta de prueba:</strong> 4111111111111111 | CVV: 123 | Fecha: 12/28
+            <div className="mt-1 text-gray-500">
+              Openpay no está configurado: Pagar Ahora completa un pago de prueba.
+            </div>
           </div>
         )}
 
