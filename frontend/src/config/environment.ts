@@ -5,32 +5,23 @@ interface AppConfig {
   apiUrl: string;
   wsUrl: string;
   frontendUrl: string;
-  openpay: {
-    merchantId: string;
-    publicApiKey: string;
-    sandboxMode: boolean;
+  stripe: {
+    publishableKey: string;
   };
 }
 
 const getConfig = (): AppConfig => {
-  // Get environment variables with fallbacks for development
   const apiUrl = process.env.REACT_APP_API_URL || 'http://localhost:8080';
   const wsUrl = process.env.REACT_APP_WS_URL || 'ws://localhost:8080';
   const frontendUrl = process.env.REACT_APP_FRONTEND_URL || 'http://localhost:3000';
-  
-  // Openpay configuration
-  const openpayMerchantId = process.env.REACT_APP_OPENPAY_MERCHANT_ID || '';
-  const openpayPublicApiKey = process.env.REACT_APP_OPENPAY_PUBLIC_API_KEY || '';
-  const openpaySandboxMode = process.env.REACT_APP_OPENPAY_SANDBOX_MODE !== 'false'; // Default to true
+  const stripePublishableKey = process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY || '';
 
   return {
     apiUrl,
     wsUrl,
     frontendUrl,
-    openpay: {
-      merchantId: openpayMerchantId,
-      publicApiKey: openpayPublicApiKey,
-      sandboxMode: openpaySandboxMode,
+    stripe: {
+      publishableKey: stripePublishableKey,
     },
   };
 };
@@ -41,7 +32,7 @@ export const config = getConfig();
 export const api = {
   baseUrl: config.apiUrl,
   base: () => `${config.apiUrl}/api`,
-  
+
   // API endpoints
   qr: (orderId: string) => `${config.apiUrl}/api/qr/${orderId}`,
   orders: (orderId: string) => `${config.apiUrl}/api/orders/${orderId}`,
@@ -54,11 +45,11 @@ export const api = {
   posOrder: () => `${config.apiUrl}/api/pos/order`,
   updateOrder: () => `${config.apiUrl}/api/orders/update`,
   adminSessions: () => `${config.apiUrl}/api/admin/sessions`,
-  paymentCharge: () => `${config.apiUrl}/api/payments/charge`,
-  
+  paymentIntents: () => `${config.apiUrl}/api/payments/intents`,
+
   // WebSocket endpoints
-  wsSession: (sessionId?: string) => 
-    sessionId 
+  wsSession: (sessionId?: string) =>
+    sessionId
       ? `${config.wsUrl}/ws/session/${sessionId}`
       : `${config.wsUrl}/ws/session`,
 };

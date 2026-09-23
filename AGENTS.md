@@ -5,7 +5,7 @@
 Handoff plan: [`agent_docs/FOLLOWUP_PLAN.md`](agent_docs/FOLLOWUP_PLAN.md)  
 Git tag: **`followup/2026-09-20`**
 
-Menu write path and split-pay fixes are on `main` (#43/#44). **Next `/goal`:** Openpay → Stripe per [`agent_docs/STRIPE_MIGRATION.md`](agent_docs/STRIPE_MIGRATION.md) (Openpay parked). Ops secrets: [`agent_docs/SECRET_ROTATION.md`](agent_docs/SECRET_ROTATION.md). TanStack Start is later.
+Menu write path and split-pay fixes are on `main` (#43/#44). **In progress:** Openpay → Stripe on `feat/stripe-payment-element` ([`agent_docs/STRIPE_MIGRATION.md`](agent_docs/STRIPE_MIGRATION.md); Openpay parked). Ops secrets: [`agent_docs/SECRET_ROTATION.md`](agent_docs/SECRET_ROTATION.md). TanStack Start is later.
 
 ---
 

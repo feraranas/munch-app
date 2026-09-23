@@ -1,6 +1,6 @@
 # Migrate payments: Openpay → Stripe (Mexico)
 
-**Status:** design + next `/goal` — Openpay is **parked**. Do not add Openpay features (including Apple Pay on Openpay).  
+**Status:** implementation on `feat/stripe-payment-element` — Openpay is **parked**. Do not add Openpay features (including Apple Pay on Openpay).  
 **Decision (2026-09-23):** Ferdinand — prefer Stripe as the simplest MX card rail for Munch’s embedded split-check.  
 **Repo:** `feraranas/munch-app`  
 **Related:** [`FOLLOWUP_PLAN.md`](FOLLOWUP_PLAN.md), [`APPLE_PAY.md`](APPLE_PAY.md) (superseded for rail choice), [`SECRET_ROTATION.md`](SECRET_ROTATION.md)  

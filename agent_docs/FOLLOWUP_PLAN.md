@@ -49,16 +49,15 @@ Add authenticated staff/admin API (and a small UI if natural) to create, update,
 
 ---
 
-### 2. Migrate Openpay → Stripe (recommended next `/goal`) — **design:** [`STRIPE_MIGRATION.md`](STRIPE_MIGRATION.md)
+### 2. Migrate Openpay → Stripe — **implementation:** `feat/stripe-payment-element` ([`STRIPE_MIGRATION.md`](STRIPE_MIGRATION.md))
 
 **Why:** Openpay is parked (ops overhead). Stripe is the simplest MX card rail for embedded split-check + later Apple Pay via Payment Element.
 
-**/goal**  
-Replace Openpay card charges with Stripe PaymentIntents + Payment Element; keep `item_ids` amount invariants from #44.
+**Status:** Implementation PR — PaymentIntents + Payment Element, webhook, mock path without keys; `POST /api/payments/charge` / Openpay removed.
 
 **Proof** — see checklist in `STRIPE_MIGRATION.md`.
 
-**Do not** start TanStack or Openpay Apple Pay. Use Stripe Cursor skills/MCP when implementing.
+**Do not** start TanStack or revive Openpay. Enable Apple Pay in Stripe Dashboard only after card cutover is live.
 
 ### 2b. Apple Pay on Openpay — **CANCELLED / superseded**
 
@@ -128,7 +127,7 @@ Do not start TanStack. Do not extend Openpay. Prefer Stripe per STRIPE_MIGRATION
 
 ## Stack quick ref
 
-- Backend: Go 1.23, Gin, GORM, WS hub, Openpay charges, Postgres (+ sqlite).
+- Backend: Go 1.23, Gin, GORM, WS hub, Stripe PaymentIntents, Postgres (+ sqlite).
 - Frontend: React 18 CRA + TS + Tailwind.
 - Issue tracker: Beads (`.beads/`), not GitHub Issues.
 - Ports: backend `8080`, frontend `3000`, Grafana `3001`.

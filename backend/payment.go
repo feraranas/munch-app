@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"math"
 
 	"gorm.io/gorm"
 )
@@ -85,4 +86,48 @@ func allOrderItemsPaid(items []OrderItem, paid []string) bool {
 		}
 	}
 	return true
+}
+
+// pesosToCentavos converts a peso amount to Stripe integer centavos (MXN).
+func pesosToCentavos(pesos float64) int64 {
+	return int64(math.Round(pesos * 100))
+}
+
+// completePaymentFromItems marks a pending payment completed and, when every
+// order line is covered by completed payments, sets the order status to paid.
+// Idempotent if the payment is already completed.
+func (app *App) completePaymentFromItems(payment *Payment, order *Order, items []OrderItem, alreadyPaid []string, txID string, providerJSON string) error {
+	if payment.Status == "completed" {
+		return nil
+	}
+	payment.Status = "completed"
+	if txID != "" {
+		payment.TransactionID = txID
+	}
+	if providerJSON != "" {
+		payment.ProviderResponse = providerJSON
+	}
+	if err := app.DB.Save(payment).Error; err != nil {
+		return err
+	}
+	paidNow := append(append([]string{}, alreadyPaid...), payment.ItemIDs...)
+	if allOrderItemsPaid(items, paidNow) {
+		if err := app.DB.Model(order).Update("status", "paid").Error; err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// markPaymentFailed sets a payment to failed (idempotent if already terminal).
+func (app *App) markPaymentFailed(payment *Payment, errMsg string, providerJSON string) error {
+	if payment.Status == "completed" || payment.Status == "failed" {
+		return nil
+	}
+	payment.Status = "failed"
+	payment.ErrorMessage = errMsg
+	if providerJSON != "" {
+		payment.ProviderResponse = providerJSON
+	}
+	return app.DB.Save(payment).Error
 }
