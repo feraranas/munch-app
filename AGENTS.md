@@ -5,7 +5,7 @@
 Handoff plan: [`agent_docs/FOLLOWUP_PLAN.md`](agent_docs/FOLLOWUP_PLAN.md)  
 Git tag: **`followup/2026-09-20`**
 
-Recommended next `/goal`: **menu write path** (JWT staff/admin create/update/archive for `menu_items`). Apple Pay is design-first; TanStack Start is later. See the plan for proof checklists.
+Menu write path and split-pay fixes are on `main` (#43/#44). Next: confirm Openpay Apple Pay support per [`agent_docs/APPLE_PAY.md`](agent_docs/APPLE_PAY.md); ops secrets per [`agent_docs/SECRET_ROTATION.md`](agent_docs/SECRET_ROTATION.md). TanStack Start is later.
 
 ---
 
