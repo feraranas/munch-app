@@ -59,9 +59,9 @@ func main() {
 	// Load configuration
 	app.Config = config.LoadConfig()
 
-	// Warn if Openpay credentials are missing
-	if app.Config.OpenpayMerchantID == "" || app.Config.OpenpayPrivateKey == "" {
-		app.Logger.Warn().Msg("Openpay credentials not configured. Set OPENPAY_MERCHANT_ID and OPENPAY_PRIVATE_KEY env vars.")
+	// Warn if Stripe credentials are missing (dev uses mock payment path)
+	if app.Config.StripeSecretKey == "" {
+		app.Logger.Warn().Msg("STRIPE_SECRET_KEY not configured; payments will use the local mock path. Set STRIPE_SECRET_KEY and STRIPE_WEBHOOK_SECRET for live charges.")
 	}
 
 	// Initialize database
@@ -125,7 +125,7 @@ func (app *App) initRouter() {
 	corsConfig := cors.DefaultConfig()
 	corsConfig.AllowOrigins = app.Config.GetAllowedOrigins()
 	corsConfig.AllowMethods = []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}
-	corsConfig.AllowHeaders = []string{"Origin", "Content-Type", "Accept", "Authorization"}
+	corsConfig.AllowHeaders = []string{"Origin", "Content-Type", "Accept", "Authorization", "Stripe-Signature"}
 	corsConfig.AllowCredentials = true
 	app.Router.Use(cors.New(corsConfig))
 
@@ -140,10 +140,11 @@ func (app *App) initRouter() {
 	// Public routes (no authentication required)
 	api := app.Router.Group("/api")
 	{
-		api.GET("/qr/:qrId", app.getOrderByQR)                 // Clients need this
-		api.GET("/orders/:id", app.getOrder)                   // Clients need this
-		api.GET("/menu/items", app.getMenuItems)               // Clients need this
-		api.POST("/payments/charge", app.processPaymentCharge) // Clients need this for payment processing
+		api.GET("/qr/:qrId", app.getOrderByQR)                        // Clients need this
+		api.GET("/orders/:id", app.getOrder)                          // Clients need this
+		api.GET("/menu/items", app.getMenuItems)                      // Clients need this
+		api.POST("/payments/intents", app.createPaymentIntent)        // Diners: create PaymentIntent / mock
+		api.POST("/payments/stripe/webhook", app.handleStripeWebhook) // Stripe signed webhooks
 	}
 
 	// Protected routes (authentication required)

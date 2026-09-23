@@ -2,6 +2,11 @@ import { Sheet } from 'react-modal-sheet';
 import { useState } from 'react';
 import { ModalHeader } from './ModalHeader';
 import PaymentForm from './PaymentForm';
+import { config } from '../config/environment';
+
+export type PreparePaymentResult =
+  | { mock: true }
+  | { mock: false; clientSecret: string };
 
 interface ModalSheetProps {
   myTotal: number;
@@ -11,7 +16,10 @@ interface ModalSheetProps {
   paymentProcessing?: boolean;
   selectedItemsCount?: number;
   formatPrice: (price: number) => string;
-  onPayment?: (tokenId: string, deviceSessionId?: string) => void | Promise<void>;
+  /** Creates PaymentIntent (or mock-completes). */
+  onPreparePayment?: () => Promise<PreparePaymentResult>;
+  /** After Stripe confirmPayment succeeds (webhook may still be in flight). */
+  onPaymentSuccess?: () => void | Promise<void>;
   onCancelPayment?: () => void;
   buttonText?: string;
   orderItems?: Array<{
@@ -24,68 +32,112 @@ interface ModalSheetProps {
   onConfirmOrder?: () => void;
 }
 
-function ModalSheet({ 
-  myTotal, 
-  totalPaidByGroup, 
-  totalPaid, 
-  remainingBalance, 
-  paymentProcessing, 
+function ModalSheet({
+  myTotal,
+  paymentProcessing,
   selectedItemsCount,
-  formatPrice, 
-  onPayment,
+  formatPrice,
+  onPreparePayment,
+  onPaymentSuccess,
   onCancelPayment,
   buttonText,
   orderItems = [],
-  onConfirmOrder
+  onConfirmOrder,
 }: ModalSheetProps) {
   const [isOpen, setOpen] = useState(false);
   const [frozenTotal, setFrozenTotal] = useState(0);
   const [frozenCount, setFrozenCount] = useState(0);
-  const onClickExpandModalCTA = () => {
+  const [clientSecret, setClientSecret] = useState<string | null>(null);
+  const [mockMode, setMockMode] = useState(false);
+  const [preparing, setPreparing] = useState(false);
+
+  const onClickCloseModalCTA = () => {
+    setOpen(false);
+    setClientSecret(null);
+    setMockMode(false);
+  };
+
+  const onClickExpandModalCTA = async () => {
     setFrozenTotal(myTotal);
     setFrozenCount(selectedItemsCount ?? 0);
-    setOpen(true);
-  };
-  const onClickCloseModalCTA = () => setOpen(false);
 
-  const handleConfirmPayment = async (tokenId: string, deviceSessionId?: string) => {
-    await onPayment?.(tokenId, deviceSessionId);
-    setOpen(false);
-  };  
+    if (orderItems.length > 0 && onConfirmOrder) {
+      setOpen(true);
+      return;
+    }
+
+    // No publishable key → mock UX (button calls intents which auto-completes).
+    if (!config.stripe.publishableKey) {
+      setMockMode(true);
+      setClientSecret(null);
+      setOpen(true);
+      return;
+    }
+
+    if (!onPreparePayment) {
+      setOpen(true);
+      return;
+    }
+
+    setPreparing(true);
+    try {
+      const result = await onPreparePayment();
+      if (result.mock) {
+        // Backend completed without client_secret (secret key also unset).
+        return;
+      }
+      setMockMode(false);
+      setClientSecret(result.clientSecret);
+      setOpen(true);
+    } catch (err) {
+      console.error('Prepare payment failed:', err);
+      alert(
+        `Error al iniciar el pago: ${
+          err instanceof Error ? err.message : 'Error desconocido'
+        }`
+      );
+    } finally {
+      setPreparing(false);
+    }
+  };
+
+  const handleStripeSuccess = async () => {
+    await onPaymentSuccess?.();
+    onClickCloseModalCTA();
+  };
+
+  const handleMockConfirm = async () => {
+    const result = await onPreparePayment?.();
+    if (result?.mock) {
+      onClickCloseModalCTA();
+      return;
+    }
+    if (result && !result.mock && result.clientSecret) {
+      // Backend has Stripe keys but we opened mock UI somehow — switch to Elements
+      setMockMode(false);
+      setClientSecret(result.clientSecret);
+      return;
+    }
+    throw new Error('No se pudo completar el pago de prueba.');
+  };
 
   return (
     <>
-      {/* Opens to 50% since initial index is 1 */}
-      {/* <Sheet
-        ref={ref}
-        isOpen={isOpen}
-        onClose={() => setOpen(false)}
-        initialSnap={1}
-        snapPoints={snapPoints}
-        onSnap={(snapIndex) =>
-          console.log('> Current snap point index:', snapIndex)
-        }
-        detent="content"
-      > */}
-      <ModalHeader 
-        isPlayerOpen={isOpen} 
-        onClickExpand={onClickExpandModalCTA} 
+      <ModalHeader
+        isPlayerOpen={isOpen}
+        onClickExpand={onClickExpandModalCTA}
         myTotal={myTotal}
         formatPrice={formatPrice}
-        buttonText={buttonText}
+        buttonText={
+          preparing || paymentProcessing ? 'Preparando…' : buttonText
+        }
       />
-      
-      <Sheet
-        isOpen={isOpen}
-        onClose={onClickCloseModalCTA}
-        // modalEffectRootId="root"
-      >
-        <Sheet.Container className='bg-gray-50'>
+
+      <Sheet isOpen={isOpen} onClose={onClickCloseModalCTA}>
+        <Sheet.Container className="bg-gray-50">
           <Sheet.Header />
-            {/* <Sheet.DragIndicator /> */}
           <Sheet.Content>
             {orderItems.length > 0 && onConfirmOrder ? (
-              // Order Confirmation View
               <div className="p-6">
                 <div className="mb-6">
                   <h2 className="text-xl font-semibold text-gray-800 mb-4">
@@ -96,11 +148,10 @@ function ModalSheet({
                   </p>
                 </div>
 
-                {/* Order Items List */}
                 <div className="mb-6 max-h-96 overflow-y-auto">
                   {orderItems.map((item) => (
-                    <div 
-                      key={item.menuId} 
+                    <div
+                      key={item.menuId}
                       className="flex justify-between items-center py-3 border-b border-gray-100 last:border-b-0"
                     >
                       <div className="flex-1">
@@ -121,7 +172,6 @@ function ModalSheet({
                   ))}
                 </div>
 
-                {/* Total */}
                 <div className="border-t border-gray-200 pt-4 mb-6">
                   <div className="flex justify-between items-center text-lg font-semibold">
                     <span>Total:</span>
@@ -129,7 +179,6 @@ function ModalSheet({
                   </div>
                 </div>
 
-                {/* Action Buttons */}
                 <div className="flex gap-3">
                   <button
                     onClick={onClickCloseModalCTA}
@@ -149,35 +198,25 @@ function ModalSheet({
                 </div>
               </div>
             ) : (
-              // Payment View (original functionality)
-              <>
-                {/* <PaymentSummary
-                  myTotal={myTotal}
-                  // totalPaidByGroup={totalPaidByGroup ?? 0}
-                  // totalPaid={totalPaid ?? 0}
-                  // remainingBalance={remainingBalance ?? 0}
-                  paymentProcessing={paymentProcessing ?? false}
-                  formatPrice={formatPrice}
-                  onPayment={onPayment ?? (() => {})}
-                /> */}
-                <PaymentForm
-                  myTotal={frozenTotal}
-                  selectedItemsCount={frozenCount}
-                  paymentProcessing={paymentProcessing ?? false}
-                  formatPrice={formatPrice}
-                  onConfirmPayment={handleConfirmPayment}
-                  onCancel={() => {
-                    onCancelPayment?.();
-                    onClickCloseModalCTA();
-                  }}
-                />
-              </>
+              <PaymentForm
+                myTotal={frozenTotal}
+                selectedItemsCount={frozenCount}
+                paymentProcessing={paymentProcessing ?? false}
+                formatPrice={formatPrice}
+                clientSecret={clientSecret}
+                mockMode={mockMode}
+                onConfirmMock={handleMockConfirm}
+                onPaymentSuccess={handleStripeSuccess}
+                onCancel={() => {
+                  onCancelPayment?.();
+                  onClickCloseModalCTA();
+                }}
+              />
             )}
           </Sheet.Content>
         </Sheet.Container>
         <Sheet.Backdrop />
-    
-    </Sheet >
+      </Sheet>
     </>
   );
 }

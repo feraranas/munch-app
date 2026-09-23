@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import * as Sentry from '@sentry/react';
 import { useWebSocket } from '../hooks/useWebSocket';
@@ -6,7 +6,8 @@ import CollaborativeUsers from './UserProfile';
 import OrderItemsList from './OrderItemsList';
 import ModalSheet from './ModalSheet';
 import { api } from '../config/environment';
-import { processPaymentCharge } from '../services/api';
+import { createPaymentIntent } from '../services/api';
+import type { PreparePaymentResult } from './ModalSheet';
 
 interface RouteParams {
   orderId: string; // This is actually the QR-ID now
@@ -54,6 +55,7 @@ const CheckView: React.FC = () => {
   const [selectedItems, setSelectedItems] = useState<Set<string>>(new Set());
   const [paidItemIds, setPaidItemIds] = useState<Set<string>>(new Set());
   const [paymentProcessing, setPaymentProcessing] = useState<boolean>(false);
+  const pendingPayRef = useRef<{ itemIds: string[]; myTotal: number } | null>(null);
 
   // Initialize WebSocket connection for this QR session
   const { isConnected,
@@ -233,7 +235,24 @@ const CheckView: React.FC = () => {
     return Array.from(ids);
   };
 
-  const confirmPayment = async (tokenId: string, deviceSessionId?: string) => {
+  const applyPaidItemsLocally = (itemIds: string[], myTotal: number) => {
+    sendPaymentConfirmation(myTotal);
+    setPaidItemIds((prev) => {
+      const next = new Set(prev);
+      itemIds.forEach((id) => next.add(id));
+      return next;
+    });
+    itemIds.forEach((itemId) => {
+      sendItemSelection(itemId, false);
+    });
+    setSelectedItems((prev) => {
+      const next = new Set(prev);
+      itemIds.forEach((id) => next.delete(id));
+      return next;
+    });
+  };
+
+  const preparePayment = async (): Promise<PreparePaymentResult> => {
     const itemIds = claimedItemIds();
     if (itemIds.length === 0) {
       throw new Error('Selecciona al menos un item para pagar');
@@ -243,42 +262,40 @@ const CheckView: React.FC = () => {
     const myTotal = calculateMyTotal();
 
     try {
-      const paymentResponse = await processPaymentCharge({
-        token_id: tokenId,
+      const intent = await createPaymentIntent({
         order_id: qrSession!.order!.id,
         item_ids: itemIds,
-        description: `Pago de cuenta - Mesa ${qrSession?.table_number || 'N/A'}`,
-        device_session_id: deviceSessionId,
       });
 
-      if (paymentResponse.success) {
-        sendPaymentConfirmation(myTotal);
-
-        setPaidItemIds((prev) => {
-          const next = new Set(prev);
-          itemIds.forEach((id) => next.add(id));
-          return next;
-        });
-        itemIds.forEach((itemId) => {
-          sendItemSelection(itemId, false);
-        });
-        setSelectedItems((prev) => {
-          const next = new Set(prev);
-          itemIds.forEach((id) => next.delete(id));
-          return next;
-        });
+      if (intent.mock) {
+        applyPaidItemsLocally(itemIds, myTotal);
         await fetchQRSession(true);
-        alert('¡Pago confirmado! Gracias por tu pago.');
-      } else {
-        throw new Error(paymentResponse.error || 'Error al procesar el pago');
+        alert('¡Pago de prueba confirmado! Gracias por tu pago.');
+        return { mock: true };
       }
+
+      if (!intent.client_secret) {
+        throw new Error('Stripe no devolvió client_secret');
+      }
+
+      pendingPayRef.current = { itemIds, myTotal };
+      return { mock: false, clientSecret: intent.client_secret };
     } catch (error) {
-      console.error('Payment error:', error);
-      alert(`Error al procesar el pago: ${error instanceof Error ? error.message : 'Error desconocido'}`);
+      console.error('Payment intent error:', error);
       throw error;
     } finally {
       setPaymentProcessing(false);
     }
+  };
+
+  const handlePaymentSuccess = async () => {
+    const pending = pendingPayRef.current;
+    const itemIds = pending?.itemIds ?? claimedItemIds();
+    const myTotal = pending?.myTotal ?? calculateMyTotal();
+    applyPaidItemsLocally(itemIds, myTotal);
+    pendingPayRef.current = null;
+    await fetchQRSession(true);
+    alert('¡Pago confirmado! Gracias por tu pago.');
   };
 
   const handleItemSelection = (menuId: string) => {
@@ -386,7 +403,8 @@ const CheckView: React.FC = () => {
         paymentProcessing={paymentProcessing}
         selectedItemsCount={mySelectedCount}
         formatPrice={formatPrice}
-        onPayment={confirmPayment}
+        onPreparePayment={preparePayment}
+        onPaymentSuccess={handlePaymentSuccess}
         onCancelPayment={handleCancelPayment}
       />
     </div>

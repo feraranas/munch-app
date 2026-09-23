@@ -35,17 +35,20 @@ type Order struct {
 	CreatedAt int64   `json:"created_at" gorm:"autoCreateTime"`
 }
 
-// Payment represents a payment attempt for an order
+// Payment represents a payment attempt for an order.
+// Amount is stored in pesos (float64) for consistency with Order.Total;
+// Stripe PaymentIntents use integer centavos (pesos * 100, rounded).
 type Payment struct {
-	ID              string   `json:"id" gorm:"primaryKey"`
-	OrderID         string   `json:"order_id" gorm:"index;not null"`
-	TransactionID   string   `json:"transaction_id"`
-	Amount          float64  `json:"amount"`
-	ItemIDs         []string `json:"item_ids,omitempty" gorm:"serializer:json"`
-	Status          string   `json:"status"` // "pending", "completed", "failed"
-	ErrorMessage    string   `json:"error_message,omitempty"`
-	OpenpayResponse string   `json:"-" gorm:"type:text"`
-	CreatedAt       int64    `json:"created_at" gorm:"autoCreateTime"`
+	ID                    string   `json:"id" gorm:"primaryKey"`
+	OrderID               string   `json:"order_id" gorm:"index;not null"`
+	TransactionID         string   `json:"transaction_id"`
+	StripePaymentIntentID string   `json:"stripe_payment_intent_id,omitempty" gorm:"index"`
+	Amount                float64  `json:"amount"`
+	ItemIDs               []string `json:"item_ids,omitempty" gorm:"serializer:json"`
+	Status                string   `json:"status"` // "pending", "completed", "failed"
+	ErrorMessage          string   `json:"error_message,omitempty"`
+	ProviderResponse      string   `json:"-" gorm:"type:text"` // Stripe event / PI JSON audit
+	CreatedAt             int64    `json:"created_at" gorm:"autoCreateTime"`
 }
 
 // ItemClaim is a durable diner claim of a menu line item within a QR session.

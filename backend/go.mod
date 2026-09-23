@@ -12,6 +12,7 @@ require (
 	github.com/gorilla/websocket v1.5.3
 	github.com/rs/zerolog v1.34.0
 	github.com/skip2/go-qrcode v0.0.0-20200617195104-da1b6568686e
+	github.com/stripe/stripe-go/v86 v86.4.2
 	golang.org/x/crypto v0.39.0
 	gopkg.in/DataDog/dd-trace-go.v1 v1.74.6
 	gorm.io/driver/postgres v1.5.9

@@ -112,20 +112,18 @@ export interface CreateOrderPayload {
   }[];
 }
 
-export interface PaymentChargePayload {
-  token_id: string;
+export interface PaymentIntentPayload {
   order_id: string;
   item_ids: string[];
-  description: string;
-  device_session_id?: string;
 }
 
-export interface PaymentChargeResponse {
-  success: boolean;
-  transaction_id?: string;
+export interface PaymentIntentResponse {
+  client_secret?: string;
+  payment_id: string;
+  amount: number; // centavos MXN
+  currency: string;
+  mock?: boolean;
   message?: string;
-  error?: string;
-  charge?: any;
 }
 
 // API Functions
@@ -256,8 +254,8 @@ export const updateOrder = async (payload: any): Promise<any> => {
   return response.json();
 };
 
-export const processPaymentCharge = async (payload: PaymentChargePayload): Promise<PaymentChargeResponse> => {
-  const response = await fetch(api.paymentCharge(), {
+export const createPaymentIntent = async (payload: PaymentIntentPayload): Promise<PaymentIntentResponse> => {
+  const response = await fetch(api.paymentIntents(), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -266,8 +264,8 @@ export const processPaymentCharge = async (payload: PaymentChargePayload): Promi
   });
 
   if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.error || 'Failed to process payment');
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.error || 'Failed to create payment intent');
   }
 
   return response.json();

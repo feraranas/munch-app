@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Overview
 
-QR code-based restaurant bill splitting. Diners scan a table QR, join a shared WebSocket session, claim individual items off the check, and pay their share via Openpay. Staff use authenticated admin/POS views to create sessions and orders.
+QR code-based restaurant bill splitting. Diners scan a table QR, join a shared WebSocket session, claim individual items off the check, and pay their share via Stripe Payment Element. Staff use authenticated admin/POS views to create sessions and orders.
 
 Two deployables: `backend/` (Go 1.23, Gin + GORM) and `frontend/` (React 18 CRA + TypeScript + Tailwind).
 
@@ -39,7 +39,7 @@ Ports: backend 8080, frontend 3000, postgres 5432, grafana 3001. CORS/WebSocket 
 
 **Backend is a flat `package main`** — no internal packages except `config/`. Everything hangs off the `App` struct (`main.go`), which carries `DB`, `Router`, `Hub`, `Config`, and a zerolog `Logger`. Handlers are methods on `*App`, so adding an endpoint means a method in `handlers.go` plus a route in `initRouter`.
 
-**Route auth tiers** (`main.go:initRouter`) matter and are easy to get wrong. `/api/auth/*` is public. A *public* `/api` group serves clients who have no account: reading a QR session, reading an order, listing the **active** menu, and — importantly — `POST /api/payments/charge`. A separate *protected* `/api` group behind `authMiddleware` covers session creation, order creation/update, POS, admin session listing, and catalog writes (`POST/PUT/DELETE /api/menu/items`, `GET /api/admin/menu/items`). Diners are never authenticated; identity is a device fingerprint, not a login.
+**Route auth tiers** (`main.go:initRouter`) matter and are easy to get wrong. `/api/auth/*` is public. A *public* `/api` group serves clients who have no account: reading a QR session, reading an order, listing the **active** menu, and — importantly — `POST /api/payments/intents` (and the Stripe webhook). A separate *protected* `/api` group behind `authMiddleware` covers session creation, order creation/update, POS, admin session listing, and catalog writes (`POST/PUT/DELETE /api/menu/items`, `GET /api/admin/menu/items`). Diners are never authenticated; identity is a device fingerprint, not a login.
 
 **Diner identity is derived, not stored.** The frontend generates a fingerprint (`utils/deviceFingerprint.ts`) and sends it in the WebSocket `join_session` message; `client.go:generateDeterministicUserID` hashes fingerprint+session into a stable user ID so a refresh rejoins as the same person. Note: the fingerprint includes a `sessionStorage` ID, so closing the tab/browser yields a *new* user ID — abandoned claims are recovered via TTL expiry and reclaim-when-owner-offline (see below).
 
@@ -49,7 +49,7 @@ Ports: backend 8080, frontend 3000, postgres 5432, grafana 3001. CORS/WebSocket 
 
 **Persistence**: GORM `AutoMigrate` on `StaffUser`, `QRSession`, `Order`, `Payment`, `ItemClaim`, `MenuItem` runs at startup, *and* `backend/migrations/*.sql` are mounted into the postgres container's init dir. Schema changes generally need both. `StaffUser` maps to table `users`; `ItemClaim` maps to `item_claims` (unique on `qr_session` + `item_id`); `MenuItem` maps to `menu_items` (`active` defaults true). Postgres is the default (`config.go`); sqlite is supported via `DATABASE_TYPE=sqlite`.
 
-**Payments**: the frontend tokenizes the card with Openpay's JS SDK (`hooks/useOpenpay.ts`, `types/openpay.d.ts`) so raw card data never reaches the backend, then posts `{order_id, token_id, device_session_id}` — an order ID, never a client-supplied amount. `processPaymentCharge` looks the amount up from the order, writes a `Payment` row, and calls `openpay.go`. Credentials come only from `OPENPAY_MERCHANT_ID`/`OPENPAY_PRIVATE_KEY`; the service logs a warning and stays up when unset.
+**Payments**: diners pay selected `item_ids` via Stripe PaymentIntents + Payment Element (`@stripe/react-stripe-js`). Flow: `POST /api/payments/intents` with `{order_id, item_ids}` (public, no staff JWT) → amount from order DB only (`amountForMenuIDs`) → pending `Payment` → Stripe PaymentIntent (metadata `payment_id`/`order_id`/`item_ids`) → return `client_secret`. Client confirms with Payment Element (`redirect: 'if_required'`). `POST /api/payments/stripe/webhook` verifies `STRIPE_WEBHOOK_SECRET` and on `payment_intent.succeeded` completes the Payment / marks order `paid` when all lines are covered (overlap → 409). Amounts to Stripe are integer centavos MXN; `Payment.Amount` stays pesos float64. Env: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, frontend `REACT_APP_STRIPE_PUBLISHABLE_KEY`. When the secret key is unset, intents mock-complete locally (dev path). Openpay is parked — do not revive `OPENPAY_*` / Openpay.js.
 
 **Frontend data flow**: server state goes through TanStack Query with keys centralized in `hooks/useQueries.ts` (`queryKeys`); realtime state goes through `hooks/useWebSocket.ts`. All URLs are built from `config/environment.ts` — add endpoints to its `api` object rather than hardcoding. `services/api.ts` attaches the JWT from `localStorage.auth_token`. Routing is `createBrowserRouter` in `App.tsx`, with staff routes wrapped in `ProtectedRoute` and auth state in `contexts/AuthContext.tsx`.
 

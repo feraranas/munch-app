@@ -10,32 +10,31 @@ import (
 
 // Config holds all configuration for the application
 type Config struct {
-	APIPort            int
-	FrontendURL        string
-	APIURL             string
-	DatabaseURL        string
-	DatabaseType       string // "sqlite" or "postgres"
-	JWTSecret          string // Secret key for JWT token signing
-	OpenpayMerchantID  string // Openpay merchant ID
-	OpenpayPrivateKey  string // Openpay private API key
-	OpenpaySandboxMode bool   // Openpay sandbox mode
+	APIPort              int
+	FrontendURL          string
+	APIURL               string
+	DatabaseURL          string
+	DatabaseType         string // "sqlite" or "postgres"
+	JWTSecret            string // Secret key for JWT token signing
+	StripeSecretKey      string // Stripe secret API key (sk_...)
+	StripeWebhookSecret  string // Stripe webhook signing secret (whsec_...)
+	StripePublishableKey string // Optional; docs / frontend alignment only
 }
 
 // LoadConfig loads configuration from environment variables with defaults
 func LoadConfig() *Config {
 	config := &Config{
-		APIPort:            8080,
-		FrontendURL:        "http://localhost:3000",
-		APIURL:             "http://localhost:8080",
-		DatabaseType:       "postgres",
-		DatabaseURL:        "postgres://munch_user:munch_password@localhost:5432/munch_app_dev?sslmode=disable",
-		JWTSecret:          "", // Must be provided via JWT_SECRET; a random one is generated if unset
-		OpenpayMerchantID:  "", // Set via OPENPAY_MERCHANT_ID env var
-		OpenpayPrivateKey:  "", // Set via OPENPAY_PRIVATE_KEY env var
-		OpenpaySandboxMode: true,
+		APIPort:              8080,
+		FrontendURL:          "http://localhost:3000",
+		APIURL:               "http://localhost:8080",
+		DatabaseType:         "postgres",
+		DatabaseURL:          "postgres://munch_user:munch_password@localhost:5432/munch_app_dev?sslmode=disable",
+		JWTSecret:            "", // Must be provided via JWT_SECRET; a random one is generated if unset
+		StripeSecretKey:      "", // Set via STRIPE_SECRET_KEY
+		StripeWebhookSecret:  "", // Set via STRIPE_WEBHOOK_SECRET
+		StripePublishableKey: "", // Set via STRIPE_PUBLISHABLE_KEY (optional on backend)
 	}
 
-	// Load from environment variables if they exist
 	if port := os.Getenv("API_PORT"); port != "" {
 		if p, err := strconv.Atoi(port); err == nil {
 			config.APIPort = p
@@ -62,17 +61,14 @@ func LoadConfig() *Config {
 		config.JWTSecret = jwtSecret
 	}
 
-	// Openpay configuration
-	if merchantID := os.Getenv("OPENPAY_MERCHANT_ID"); merchantID != "" {
-		config.OpenpayMerchantID = merchantID
+	if sk := os.Getenv("STRIPE_SECRET_KEY"); sk != "" {
+		config.StripeSecretKey = sk
 	}
-
-	if privateKey := os.Getenv("OPENPAY_PRIVATE_KEY"); privateKey != "" {
-		config.OpenpayPrivateKey = privateKey
+	if wh := os.Getenv("STRIPE_WEBHOOK_SECRET"); wh != "" {
+		config.StripeWebhookSecret = wh
 	}
-
-	if sandboxMode := os.Getenv("OPENPAY_SANDBOX_MODE"); sandboxMode == "false" {
-		config.OpenpaySandboxMode = false
+	if pk := os.Getenv("STRIPE_PUBLISHABLE_KEY"); pk != "" {
+		config.StripePublishableKey = pk
 	}
 
 	// Never fall back to a hardcoded JWT secret: a known signing key lets anyone
