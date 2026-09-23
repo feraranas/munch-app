@@ -96,3 +96,8 @@ docker-compose up frontend
 docker-compose up --build
 docker-compose up --force-recreate
 ```
+
+## Agent handoff
+
+Next outer-loop work is documented in [`agent_docs/FOLLOWUP_PLAN.md`](agent_docs/FOLLOWUP_PLAN.md) (tag `followup/2026-09-20`).
+

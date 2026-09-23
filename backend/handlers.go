@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -506,12 +507,6 @@ func (app *App) POSOrder(c *gin.Context) {
 		return
 	}
 
-	// Debug: Log what we received
-	fmt.Printf("🔍 DEBUG POSOrder: Received %d selectedItems\n", len(req.SelectedItems))
-	for i, item := range req.SelectedItems {
-		fmt.Printf("🔍 DEBUG POSOrder: Item %d - ID: %s, MenuID: %s, Qty: %d\n", i, item.ID, item.MenuID, item.Qty)
-	}
-
 	// First, verify the QR session exists
 	var qrSession QRSession
 	result := app.DB.First(&qrSession, "id = ?", req.QRID)
@@ -536,7 +531,7 @@ func (app *App) POSOrder(c *gin.Context) {
 
 		// Validate MenuID exists - critical for data integrity
 		if selectedItem.MenuID == "" {
-			fmt.Printf("🚨 CRITICAL: SelectedItem missing MenuID - ID: %s, Qty: %d\n", selectedItem.ID, selectedItem.Qty)
+			log.Printf("POSOrder: selected item missing MenuID (id=%s qty=%d)", selectedItem.ID, selectedItem.Qty)
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid item: missing unique identifier"})
 			return
 		}
@@ -551,7 +546,6 @@ func (app *App) POSOrder(c *gin.Context) {
 			Qty:      selectedItem.Qty,
 			Toppings: selectedItem.Toppings,
 		}
-		fmt.Printf("🔍 DEBUG POSOrder: Created OrderItem - ID: %s, MenuID: %s, Name: %s, Toppings: %d\n", orderItem.ID, orderItem.MenuID, orderItem.Name, len(orderItem.Toppings))
 		orderItems = append(orderItems, orderItem)
 		total += itemPrice * float64(selectedItem.Qty)
 	}
