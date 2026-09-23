@@ -5,7 +5,7 @@
 Handoff plan: [`agent_docs/FOLLOWUP_PLAN.md`](agent_docs/FOLLOWUP_PLAN.md)  
 Git tag: **`followup/2026-09-20`**
 
-Menu write path and split-pay fixes are on `main` (#43/#44). Next: confirm Openpay Apple Pay support per [`agent_docs/APPLE_PAY.md`](agent_docs/APPLE_PAY.md); ops secrets per [`agent_docs/SECRET_ROTATION.md`](agent_docs/SECRET_ROTATION.md). TanStack Start is later.
+Menu write path and split-pay fixes are on `main` (#43/#44). **Next `/goal`:** Openpay → Stripe per [`agent_docs/STRIPE_MIGRATION.md`](agent_docs/STRIPE_MIGRATION.md) (Openpay parked). Ops secrets: [`agent_docs/SECRET_ROTATION.md`](agent_docs/SECRET_ROTATION.md). TanStack Start is later.
 
 ---
 
