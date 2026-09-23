@@ -19,6 +19,7 @@
 | [#43](https://github.com/feraranas/munch-app/pull/43) | Menu write path | JWT staff create/update/archive; `/admin/menu`; tests |
 | [#44](https://github.com/feraranas/munch-app/pull/44) | QR / POS confirm / split pay / local mock | Charge selected `item_ids`; Pago parcial; mock without Openpay keys |
 | [#45](https://github.com/feraranas/munch-app/pull/45) | Handoff links + POSOrder debug cleanup | AGENTS/README → FOLLOWUP_PLAN; drop debug printfs |
+| [#46](https://github.com/feraranas/munch-app/pull/46) | Apple Pay design + secret rotation docs | Later superseded by Stripe migration |
 
 **Constraints from prior loops**
 - Cloud Agents may be unavailable (plan); GitHub API (branch → push → PR) is an acceptable path for scoped work.
@@ -48,7 +49,22 @@ Add authenticated staff/admin API (and a small UI if natural) to create, update,
 
 ---
 
-### 2. Apple Pay beside Openpay (design → then implement) — **design doc:** [`APPLE_PAY.md`](APPLE_PAY.md)
+### 2. Migrate Openpay → Stripe (recommended next `/goal`) — **design:** [`STRIPE_MIGRATION.md`](STRIPE_MIGRATION.md)
+
+**Why:** Openpay is parked (ops overhead). Stripe is the simplest MX card rail for embedded split-check + later Apple Pay via Payment Element.
+
+**/goal**  
+Replace Openpay card charges with Stripe PaymentIntents + Payment Element; keep `item_ids` amount invariants from #44.
+
+**Proof** — see checklist in `STRIPE_MIGRATION.md`.
+
+**Do not** start TanStack or Openpay Apple Pay. Use Stripe Cursor skills/MCP when implementing.
+
+### 2b. Apple Pay on Openpay — **CANCELLED / superseded**
+
+See [`APPLE_PAY.md`](APPLE_PAY.md) (points at Stripe). Enable Apple Pay in Stripe Dashboard only after card migration works.
+
+### 2c. Apple Pay beside Openpay (archived heading)
 
 **Context today**
 - Frontend: Openpay.js card tokenize (`useOpenpay.ts`) → `POST /api/payments/charge` with `{order_id, token_id, device_session_id}`.
@@ -101,11 +117,11 @@ Repo: https://github.com/feraranas/munch-app
 Read: agent_docs/FOLLOWUP_PLAN.md (or git tag followup/2026-09-20)
 
 /goal
-<pick Apple Pay implementation only after Openpay confirmation + APPLE_PAY.md; else ops secret rotation>
+<pick STRIPE_MIGRATION.md implementation /goal unless Ferdinand says otherwise>
 
 Follow the proof checklist in that section. Open a PR against main.
 Prefer GitHub remote edits if Cloud Agents are unavailable.
-Do not start TanStack or Apple Pay implementation without explicit ask / Openpay confirmation (see APPLE_PAY.md).
+Do not start TanStack. Do not extend Openpay. Prefer Stripe per STRIPE_MIGRATION.md; Apple Pay only after Stripe cards work.
 ```
 
 ---

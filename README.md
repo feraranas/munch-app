@@ -99,5 +99,5 @@ docker-compose up --force-recreate
 
 ## Agent handoff
 
-Next outer-loop work is documented in [`agent_docs/FOLLOWUP_PLAN.md`](agent_docs/FOLLOWUP_PLAN.md) (tag `followup/2026-09-20`).
+Next outer-loop work: [`agent_docs/STRIPE_MIGRATION.md`](agent_docs/STRIPE_MIGRATION.md) (Openpay → Stripe). Index: [`agent_docs/FOLLOWUP_PLAN.md`](agent_docs/FOLLOWUP_PLAN.md).
 

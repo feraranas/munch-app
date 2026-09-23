@@ -4,6 +4,8 @@
 
 **Status:** ops checklist — not a feature PR. Do this in the live merchant / hosting accounts.
 
+**Note (2026-09-23):** After Stripe cutover, rotate/revoke **Openpay** keys as part of decommissioning; add Stripe secret/publishable/webhook secrets to env (never commit). See [`STRIPE_MIGRATION.md`](STRIPE_MIGRATION.md).
+
 **Written:** 2026-09-23 (CT)
 
 ---
