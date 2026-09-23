@@ -1,5 +1,14 @@
 # Agent Instructions
 
+## Outer-loop follow-up (read first for next work)
+
+Handoff plan: [`agent_docs/FOLLOWUP_PLAN.md`](agent_docs/FOLLOWUP_PLAN.md)  
+Git tag: **`followup/2026-09-20`**
+
+Recommended next `/goal`: **menu write path** (JWT staff/admin create/update/archive for `menu_items`). Apple Pay is design-first; TanStack Start is later. See the plan for proof checklists.
+
+---
+
 This project uses **bd** (beads) for issue tracking. Run `bd prime` for full workflow context.
 
 > **Architecture in one line:** Issues live in a local Dolt database
