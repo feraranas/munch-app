@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -13,6 +14,44 @@ import (
 	"github.com/stripe/stripe-go/v86"
 	"github.com/stripe/stripe-go/v86/webhook"
 )
+
+// stripeMinAmountCentavosMXN is Stripe's minimum charge amount for MXN
+// ($10.00 MXN = 1000 centavos). See:
+// https://docs.stripe.com/currencies#minimum-and-maximum-charge-amounts
+const stripeMinAmountCentavosMXN int64 = 1000
+
+const amountBelowMinimumMsg = "El pago mínimo con tarjeta es de $10.00 MXN. Agrega más productos a tu selección."
+
+func amountBelowMinimumBody(amountCentavos int64) gin.H {
+	return gin.H{
+		"error":      amountBelowMinimumMsg,
+		"code":       "amount_below_minimum",
+		"min_amount": stripeMinAmountCentavosMXN,
+		"amount":     amountCentavos,
+	}
+}
+
+// mapStripePaymentIntentError maps a Stripe API error to an HTTP status and
+// client-safe JSON body. Never includes secret keys or raw internal details.
+func mapStripePaymentIntentError(err error, amountCentavos int64) (int, gin.H) {
+	var stripeErr *stripe.Error
+	if errors.As(err, &stripeErr) {
+		if stripeErr.Type == stripe.ErrorTypeInvalidRequest && stripeErr.Code == stripe.ErrorCodeAmountTooSmall {
+			return http.StatusBadRequest, amountBelowMinimumBody(amountCentavos)
+		}
+		if stripeErr.Type == stripe.ErrorTypeCard {
+			msg := stripeErr.Msg
+			if msg == "" {
+				msg = "Tu tarjeta fue rechazada. Intenta con otra."
+			}
+			return http.StatusPaymentRequired, gin.H{
+				"error": msg,
+				"code":  "card_error",
+			}
+		}
+	}
+	return http.StatusBadGateway, gin.H{"error": "Error al iniciar el pago con Stripe."}
+}
 
 // PaymentIntentCreateRequest is the diner request to start a split payment.
 type PaymentIntentCreateRequest struct {
@@ -83,6 +122,13 @@ func (app *App) createPaymentIntent(c *gin.Context) {
 	}
 	amountCentavos := pesosToCentavos(amountPesos)
 
+	// Enforce Stripe MXN minimum before inserting a Payment row (no orphan
+	// pending/failed rows for a rejected small amount). Applies to mock + live.
+	if amountCentavos < stripeMinAmountCentavosMXN {
+		c.JSON(http.StatusBadRequest, amountBelowMinimumBody(amountCentavos))
+		return
+	}
+
 	app.Logger.Info().
 		Str("order_id", req.OrderID).
 		Float64("amount_pesos", amountPesos).
@@ -146,7 +192,8 @@ func (app *App) createPaymentIntent(c *gin.Context) {
 	if err != nil {
 		app.Logger.Error().Err(err).Str("order_id", req.OrderID).Msg("Stripe PaymentIntent create failed")
 		_ = app.markPaymentFailed(&payment, err.Error(), "")
-		c.JSON(http.StatusBadGateway, gin.H{"error": "Error al iniciar el pago con Stripe."})
+		status, body := mapStripePaymentIntentError(err, amountCentavos)
+		c.JSON(status, body)
 		return
 	}
 

@@ -52,8 +52,8 @@ func TestMockPaymentIntentChargesSelectedItemsNotWholeCheck(t *testing.T) {
 	order := Order{
 		ID: uuid.New().String(),
 		Items: `[{"id":"tacos_pastor","menuId":"line-1","name":"Tacos","price":12.99,"qty":1},` +
-			`{"id":"churros","menuId":"line-2","name":"Churros","price":5.99,"qty":1}]`,
-		Total:  18.98,
+			`{"id":"churros","menuId":"line-2","name":"Churros","price":10.00,"qty":1}]`,
+		Total:  22.99,
 		Status: "open",
 	}
 	if err := app.DB.Create(&order).Error; err != nil {
@@ -280,4 +280,137 @@ func TestCompletePaymentFromItemsHelper(t *testing.T) {
 	}
 	// Ensure unused import stripe is referenced if needed — keep compile happy for webhook types
 	_ = stripe.APIVersion
+}
+
+
+func TestPaymentIntentRejectsAmountBelowMinimum(t *testing.T) {
+	app := setupPaymentHTTPApp(t)
+
+	order := Order{
+		ID: uuid.New().String(),
+		Items: `[{"id":"a","menuId":"line-1","name":"Item A","price":3.99,"qty":1},` +
+			`{"id":"b","menuId":"line-2","name":"Item B","price":3.99,"qty":1}]`,
+		Total:  7.98,
+		Status: "open",
+	}
+	if err := app.DB.Create(&order).Error; err != nil {
+		t.Fatalf("create order: %v", err)
+	}
+
+	w := doJSON(t, app, http.MethodPost, "/api/payments/intents", "", map[string]any{
+		"order_id": order.ID,
+		"item_ids": []string{"line-1", "line-2"},
+	})
+	if w.Code != http.StatusBadRequest {
+		t.Fatalf("status=%d, want 400 body=%s", w.Code, w.Body.String())
+	}
+
+	var body map[string]any
+	if err := json.Unmarshal(w.Body.Bytes(), &body); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if body["code"] != "amount_below_minimum" {
+		t.Fatalf("code=%v, want amount_below_minimum", body["code"])
+	}
+	if body["error"] != amountBelowMinimumMsg {
+		t.Fatalf("error=%v", body["error"])
+	}
+	if int64(body["min_amount"].(float64)) != stripeMinAmountCentavosMXN {
+		t.Fatalf("min_amount=%v, want %d", body["min_amount"], stripeMinAmountCentavosMXN)
+	}
+	if int64(body["amount"].(float64)) != 798 {
+		t.Fatalf("amount=%v, want 798", body["amount"])
+	}
+
+	var count int64
+	if err := app.DB.Model(&Payment{}).Where("order_id = ?", order.ID).Count(&count).Error; err != nil {
+		t.Fatalf("count payments: %v", err)
+	}
+	if count != 0 {
+		t.Fatalf("expected 0 Payment rows for below-minimum, got %d", count)
+	}
+}
+
+func TestPaymentIntentAllowsExactMinimum(t *testing.T) {
+	app := setupPaymentHTTPApp(t)
+
+	order := Order{
+		ID:     uuid.New().String(),
+		Items:  `[{"id":"tacos","menuId":"line-1","name":"Tacos","price":10.00,"qty":1}]`,
+		Total:  10,
+		Status: "open",
+	}
+	if err := app.DB.Create(&order).Error; err != nil {
+		t.Fatalf("create order: %v", err)
+	}
+
+	w := doJSON(t, app, http.MethodPost, "/api/payments/intents", "", map[string]any{
+		"order_id": order.ID,
+		"item_ids": []string{"line-1"},
+	})
+	if w.Code != http.StatusOK {
+		t.Fatalf("status=%d, want 200 body=%s", w.Code, w.Body.String())
+	}
+
+	var resp PaymentIntentCreateResponse
+	if err := json.Unmarshal(w.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if resp.Amount != 1000 {
+		t.Fatalf("amount=%d, want 1000", resp.Amount)
+	}
+	if !resp.Mock {
+		t.Fatalf("expected mock path")
+	}
+
+	var count int64
+	if err := app.DB.Model(&Payment{}).Where("order_id = ? AND status = ?", order.ID, "completed").Count(&count).Error; err != nil {
+		t.Fatalf("count: %v", err)
+	}
+	if count != 1 {
+		t.Fatalf("expected 1 completed payment, got %d", count)
+	}
+}
+
+func TestMapStripePaymentIntentError(t *testing.T) {
+	status, body := mapStripePaymentIntentError(&stripe.Error{
+		Type: stripe.ErrorTypeInvalidRequest,
+		Code: stripe.ErrorCodeAmountTooSmall,
+		Msg:  "Amount must be at least $10.00 MXN",
+	}, 798)
+	if status != http.StatusBadRequest {
+		t.Fatalf("status=%d, want 400", status)
+	}
+	if body["code"] != "amount_below_minimum" {
+		t.Fatalf("body=%v", body)
+	}
+	if body["amount"] != int64(798) {
+		t.Fatalf("amount=%v", body["amount"])
+	}
+
+	status, body = mapStripePaymentIntentError(&stripe.Error{
+		Type: stripe.ErrorTypeCard,
+		Code: stripe.ErrorCodeCardDeclined,
+		Msg:  "Your card was declined.",
+	}, 1500)
+	if status != http.StatusPaymentRequired {
+		t.Fatalf("status=%d, want 402", status)
+	}
+	if body["code"] != "card_error" {
+		t.Fatalf("body=%v", body)
+	}
+	if body["error"] != "Your card was declined." {
+		t.Fatalf("error=%v", body["error"])
+	}
+
+	status, body = mapStripePaymentIntentError(fmt.Errorf("network boom"), 1500)
+	if status != http.StatusBadGateway {
+		t.Fatalf("status=%d, want 502", status)
+	}
+	if body["error"] != "Error al iniciar el pago con Stripe." {
+		t.Fatalf("error=%v", body["error"])
+	}
+	if _, ok := body["code"]; ok {
+		t.Fatalf("generic 502 must not leak code: %v", body)
+	}
 }

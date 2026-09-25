@@ -51,6 +51,14 @@ function ModalSheet({
   const [mockMode, setMockMode] = useState(false);
   const [preparing, setPreparing] = useState(false);
 
+  // Stripe MXN card minimum is $10.00 — skip for staff "confirm order" CTA.
+  const isPaymentCTA = !(orderItems.length > 0 && onConfirmOrder);
+  const belowCardMinimum =
+    isPaymentCTA && myTotal > 0 && myTotal < 10;
+  const minAmountHint = belowCardMinimum
+    ? 'El pago mínimo con tarjeta es de $10.00 MXN. Agrega más productos.'
+    : undefined;
+
   const onClickCloseModalCTA = () => {
     setOpen(false);
     setClientSecret(null);
@@ -58,6 +66,9 @@ function ModalSheet({
   };
 
   const onClickExpandModalCTA = async () => {
+    if (belowCardMinimum) {
+      return;
+    }
     setFrozenTotal(myTotal);
     setFrozenCount(selectedItemsCount ?? 0);
 
@@ -131,6 +142,8 @@ function ModalSheet({
         buttonText={
           preparing || paymentProcessing ? 'Preparando…' : buttonText
         }
+        disabled={belowCardMinimum || preparing || !!paymentProcessing}
+        hint={minAmountHint}
       />
 
       <Sheet isOpen={isOpen} onClose={onClickCloseModalCTA}>

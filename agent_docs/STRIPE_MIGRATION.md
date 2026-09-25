@@ -138,3 +138,22 @@ when choosing Checkout Sessions vs PaymentIntents and when wiring Elements.
 - OXXO / SPEI / MSI day one (add later via Stripe if product asks)
 - Stripe Connect / multi-restaurant marketplace
 - History rewrite of leaked Openpay secrets (rotation checklist only)
+
+
+---
+
+## MXN minimum charge and client errors (post-#48)
+
+Stripe requires **at least $10.00 MXN** (1000 centavos) per PaymentIntent. See [minimum and maximum charge amounts](https://docs.stripe.com/currencies#minimum-and-maximum-charge-amounts).
+
+`POST /api/payments/intents` (`createPaymentIntent`):
+
+1. After computing amount from DB `item_ids` (and before inserting a `Payment` row), reject amounts below 1000 centavos with **HTTP 400** and:
+   `{"error":"El pago mínimo con tarjeta es de $10.00 MXN. Agrega más productos a tu selección.","code":"amount_below_minimum","min_amount":1000,"amount":<centavos>}`.
+   Same check on the mock path (no `STRIPE_SECRET_KEY`) so local UX matches prod.
+2. Live Stripe create failures are mapped via `*stripe.Error` (`errors.As`):
+   - `invalid_request_error` + `amount_too_small` → same **400** body (defense in depth; Payment row already exists in this path and is marked failed).
+   - `card_error` → **402** with Stripe’s user-safe `Msg` (never secrets / raw internals).
+   - Everything else → **502** generic `"Error al iniciar el pago con Stripe."` (full error still logged).
+
+Frontend `createPaymentIntent` surfaces the JSON `error` string in the thrown `Error`; the pay CTA shows a small hint and disables when the selected total is under $10 MXN.
