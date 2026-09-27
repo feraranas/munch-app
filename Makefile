@@ -1,6 +1,6 @@
 # Munch App Development Makefile
 
-.PHONY: help dev dev-postgres dev-sqlite build clean migrate seed logs
+.PHONY: help dev dev-postgres dev-sqlite build clean migrate seed logs smoke-payments
 
 # Default target
 help:
@@ -13,6 +13,7 @@ help:
 	@echo "  seed            - Seed database with sample data"
 	@echo "  logs            - Show logs from all services"
 	@echo "  clean           - Stop and remove all containers and volumes"
+	@echo "  smoke-payments  - Opt-in Stagehand diner smoke (not CI). Needs live app, Stripe, OpenAI, stripe CLI."
 	@echo "  fix-permissions - Fix PostgreSQL permissions for munch_user"
 	@echo "  help            - Show this help message"
 
@@ -78,6 +79,13 @@ setup-local-db:
 fix-permissions:
 	@echo "Fixing PostgreSQL permissions..."
 	cd backend && ./scripts/fix-postgres-permissions.sh
+
+# Opt-in payment UI smoke. Fail only on API oracles (paid_item_ids, $10 hint via DOM/API).
+# Requires: frontend :3000, backend :8080, backend/.env (STRIPE_* + OPENAI_API_KEY), `stripe login`.
+# Not a PR gate — iframe/CLI/Chrome flakes are not product regressions.
+smoke-payments:
+	@test -f backend/.env || (echo "backend/.env missing"; exit 1)
+	@cd scripts/stagehand && npm install && npm run smoke
 
 # Run schema migration on local database
 migrate-local:
