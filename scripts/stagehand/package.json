@@ -1,0 +1,16 @@
+{
+  "name": "munch-stagehand-smokes",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "smoke": "tsx smoke-split-pay.ts"
+  },
+  "dependencies": {
+    "@browserbasehq/stagehand": "^4.1.0",
+    "zod": "~4.4.3"
+  },
+  "devDependencies": {
+    "tsx": "^4.20.0",
+    "typescript": "^5.8.0"
+  }
+}

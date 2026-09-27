@@ -40,6 +40,9 @@ Thumbs.db
 # Logs
 *.log
 
+# Stagehand smoke artifacts
+scripts/stagehand/out/
+
 # Docker volumes and data
 data/
 promtail/docker_volumes/
