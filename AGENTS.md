@@ -135,3 +135,18 @@ bd prime                # Refresh Beads context
 
 **Architecture in one line:** issues live in a local Dolt DB; sync uses `refs/dolt/data` on your git remote; `.beads/issues.jsonl` is a passive export. See https://github.com/gastownhall/beads/blob/main/docs/SYNC_CONCEPTS.md for details and anti-patterns.
 <!-- END BEADS CODEX SETUP -->
+
+## Verification (Codex, Claude, Cursor, any agent)
+
+To prove a UI/API change actually works, read [`skills/verify-munch-app/SKILL.md`](skills/verify-munch-app/SKILL.md) first, then drive the app with its helper:
+
+```bash
+cd skills/verify-munch-app
+export RUN_ID=$(date +%s)
+scripts/munchctl launch                                  # isolated SQLite instance on :18080 / :13000
+scripts/munchctl doctor                                  # read-only health check; exit 0 = drivable
+scripts/munchctl browser journeys/admin-menu-create.mjs  # Playwright journey; evidence in /workspace/munch-verify-evidence/$RUN_ID
+scripts/munchctl cleanup                                 # stops only what launch started; keeps evidence
+```
+
+Feature recipes live in `skills/verify-munch-app/features/`. `.cursor/skills/verify-munch-app` and `.claude/skills/verify-munch-app` are symlinks to the same directory.
