@@ -1,0 +1,30 @@
+- img
+- heading "Menú" [level=1]
+- heading "Tacos al Pastor (3)" [level=3]
+- text: $12.99 + Extra Piña $1.50 + Guacamole $2.00 + Crema $0.75
+- heading "Enchiladas Verdes" [level=3]
+- text: $14.99
+- heading "Tacos de Carnitas (3)" [level=3]
+- text: $11.99 + Guacamole $2.00 + Crema $0.75 + Queso Extra $1.25
+- heading "Burrito de Pollo" [level=3]
+- text: $13.99 + Guacamole $2.00 + Queso Extra $1.25 + Jalapeños $0.50
+- heading "Quesadilla de Queso" [level=3]
+- text: $9.99 + Hongos $1.50 + Rajas $1.00 + Queso Extra $1.25
+- heading "Cerveza Corona" [level=3]
+- text: $4.50
+- heading "Cerveza Modelo" [level=3]
+- text: $4.50
+- heading "Agua de Horchata" [level=3]
+- text: $3.99
+- heading "Agua de Jamaica" [level=3]
+- text: $3.99
+- heading "Flan Napolitano" [level=3]
+- text: $6.99
+- heading "Tres Leches" [level=3]
+- text: $7.99
+- heading "Churros (6)" [level=3]
+- text: $5.99
+- heading "Verify Tostada final" [level=3]
+- text: $42.50
+- button "Open Tanstack query devtools":
+  - img

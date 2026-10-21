@@ -1,0 +1,97 @@
+#!/usr/bin/env bash
+# munchctl — launch/doctor/cleanup an isolated Munch App instance for verification.
+# State:    /tmp/munch-verify-$RUN_ID   (scratch; removed by cleanup)
+# Evidence: /workspace/munch-verify-evidence/$RUN_ID (outside the repo; NEVER removed by cleanup)
+set -euo pipefail
+REPO="$(cd "$(dirname "$0")/../../../.." && pwd)"
+RUN_ID="${RUN_ID:-default}"
+RUN_DIR="/tmp/munch-verify-$RUN_ID"
+EVIDENCE_DIR="${EVIDENCE_DIR:-/workspace/munch-verify-evidence/$RUN_ID}"
+TOOLS_DIR="${MUNCH_VERIFY_TOOLS:-/workspace/munch-verify-tools}"
+BACKEND_PORT="${BACKEND_PORT:-18080}"
+FRONTEND_PORT="${FRONTEND_PORT:-13000}"
+ADMIN_USER="${ADMIN_USER:-verify_admin}"
+ADMIN_PASS="${ADMIN_PASS:-verify-pass-123}"
+API="http://127.0.0.1:$BACKEND_PORT"
+WEB="http://localhost:$FRONTEND_PORT"
+
+envfile() { cat <<E
+RUN_ID=$RUN_ID
+RUN_DIR=$RUN_DIR
+EVIDENCE_DIR=$EVIDENCE_DIR
+API=$API
+WEB=$WEB
+ADMIN_USER=$ADMIN_USER
+ADMIN_PASS=$ADMIN_PASS
+E
+}
+
+port_free() { ! (exec 3<>/dev/tcp/127.0.0.1/"$1") 2>/dev/null; }
+
+wait_http() { # url pattern timeout
+  for _ in $(seq 1 "$3"); do curl -fsS "$1" 2>/dev/null | grep -q "$2" && return 0; sleep 1; done; return 1; }
+
+seed_admin() {
+  python3 - "$RUN_DIR/munch.db" "$ADMIN_USER" "$ADMIN_PASS" <<'PY'
+import sqlite3, sys, bcrypt, time
+db, u, p = sys.argv[1:]
+h = bcrypt.hashpw(p.encode(), bcrypt.gensalt(10)).decode()
+c = sqlite3.connect(db); now = int(time.time())
+c.execute("INSERT OR REPLACE INTO users(id,username,password_hash,role,created_at,updated_at) VALUES(?,?,?,?,?,?)",
+          ("verify-admin", u, h, "admin", now, now))
+c.commit(); print("seeded admin", u)
+PY
+}
+
+launch() {
+  if [ -f "$RUN_DIR/backend.pgid" ]; then echo "RUN_ID=$RUN_ID already launched; run cleanup first" >&2; exit 1; fi
+  port_free "$BACKEND_PORT" || { echo "port $BACKEND_PORT busy (not ours) — pick BACKEND_PORT" >&2; exit 1; }
+  port_free "$FRONTEND_PORT" || { echo "port $FRONTEND_PORT busy (not ours) — pick FRONTEND_PORT" >&2; exit 1; }
+  [ -d "$REPO/frontend/node_modules" ] || (cd "$REPO/frontend" && npm install)
+  [ -d "$TOOLS_DIR/node_modules/playwright-core" ] || { mkdir -p "$TOOLS_DIR"; (cd "$TOOLS_DIR" && npm init -y >/dev/null && npm i playwright-core@1); }
+  mkdir -p "$RUN_DIR" "$EVIDENCE_DIR"
+  echo "building backend"; (cd "$REPO/backend" && go build -o "$RUN_DIR/munch-backend" .)
+  ( cd "$REPO/backend" && API_PORT=$BACKEND_PORT FRONTEND_URL=$WEB API_URL=$API DATABASE_TYPE=sqlite \
+      DATABASE_URL="$RUN_DIR/munch.db" JWT_SECRET="verify-$RUN_ID-secret" GIN_MODE=release DD_TRACE_ENABLED=false \
+      STRIPE_SECRET_KEY= STRIPE_WEBHOOK_SECRET= \
+      setsid bash -c 'echo $$ >"$0/backend.pgid"; exec "$0/munch-backend"' "$RUN_DIR" </dev/null >"$RUN_DIR/backend.log" 2>&1 & )
+  sleep 1; wait_http "$API/health" '"ok"' 60 || { echo "backend not healthy; see $RUN_DIR/backend.log" >&2; exit 1; }
+  wait_http "$API/api/menu/items" 'tacos_pastor' 20 || { echo "menu seed missing" >&2; exit 1; }
+  seed_admin
+  ( cd "$REPO/frontend" && PORT=$FRONTEND_PORT BROWSER=none CI=true REACT_APP_API_URL=$API \
+      REACT_APP_WS_URL=ws://127.0.0.1:$BACKEND_PORT REACT_APP_FRONTEND_URL=$WEB \
+      setsid bash -c 'echo $$ >"$0/frontend.pgid"; exec npx react-scripts start' "$RUN_DIR" </dev/null >"$RUN_DIR/frontend.log" 2>&1 & )
+  for _ in $(seq 1 180); do grep -qE "[Cc]ompiled successfully|[Cc]ompiled with [0-9]* warning|Compiled with warnings" "$RUN_DIR/frontend.log" && break; sleep 1; done
+  wait_http "$WEB/" 'id="root"' 30 || { echo "frontend not serving; see $RUN_DIR/frontend.log" >&2; exit 1; }
+  envfile >"$RUN_DIR/env"; echo "READY"; envfile
+}
+
+doctor() {
+  local ok=0
+  [ -f "$RUN_DIR/backend.pgid" ] || { echo "FAIL no run state at $RUN_DIR (not launched by munchctl)"; exit 1; }
+  for s in backend frontend; do
+    pg=$(cat "$RUN_DIR/$s.pgid"); if kill -0 -- "-$pg" 2>/dev/null; then echo "OK   $s pid $pg alive"; else echo "FAIL $s pid $pg dead"; ok=1; fi
+  done
+  curl -fsS "$API/health" | grep -q ok && echo "OK   $API/health" || { echo "FAIL backend health"; ok=1; }
+  n=$(curl -fsS "$API/api/menu/items" | python3 -c 'import sys,json;d=json.load(sys.stdin);d=d.get("items",d) if isinstance(d,dict) else d;print(len(d))' 2>/dev/null || echo 0)
+  [ "$n" -gt 0 ] && echo "OK   menu has $n items" || { echo "FAIL menu empty"; ok=1; }
+  tok=$(curl -fsS -X POST "$API/api/auth/login" -H 'Content-Type: application/json' -d "{\"username\":\"$ADMIN_USER\",\"password\":\"$ADMIN_PASS\"}" | python3 -c 'import sys,json;print(json.load(sys.stdin)["token"])' 2>/dev/null || true)
+  [ -n "$tok" ] && echo "OK   admin login $ADMIN_USER" || { echo "FAIL admin login"; ok=1; }
+  curl -fsS "$WEB/" | grep -q 'id="root"' && echo "OK   frontend $WEB" || { echo "FAIL frontend"; ok=1; }
+  grep -q "Connected to database.*$RUN_DIR/munch.db" "$RUN_DIR/backend.log" && echo "OK   db $RUN_DIR/munch.db" || { echo "FAIL db path not ours"; ok=1; }
+  echo "git $(git -C "$REPO" rev-parse --short HEAD)"; exit $ok
+}
+
+cleanup() {
+  for s in frontend backend; do
+    if [ -f "$RUN_DIR/$s.pgid" ]; then pg=$(cat "$RUN_DIR/$s.pgid"); kill -TERM -- "-$pg" 2>/dev/null || true; sleep 1; kill -KILL -- "-$pg" 2>/dev/null || true; echo "stopped $s group $pg"; fi
+  done
+  rm -rf "$RUN_DIR"; echo "removed $RUN_DIR; evidence kept at $EVIDENCE_DIR"; ls -la "$EVIDENCE_DIR" 2>/dev/null || true
+}
+
+case "${1:-}" in
+  launch) launch ;; doctor) doctor ;; cleanup) cleanup ;; env) envfile ;;
+  browser) shift; [ -f "$RUN_DIR/env" ] || { echo "not launched" >&2; exit 1; }
+           set -a; . "$RUN_DIR/env"; set +a; NODE_PATH="$TOOLS_DIR/node_modules" exec node "$(dirname "$0")/browser.mjs" "$@" ;;
+  *) echo "usage: RUN_ID=<id> munchctl launch|doctor|browser <journey.mjs>|env|cleanup"; exit 2 ;;
+esac
