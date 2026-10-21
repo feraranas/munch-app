@@ -1,0 +1,46 @@
+- button:
+  - img
+- img
+- heading "Menú" [level=1]
+- heading "Agregar item" [level=2]
+- textbox "Nombre"
+- spinbutton "Precio"
+- button "Crear"
+- text: Tacos al Pastor (3) $12.99
+- button "Editar"
+- button "Archivar"
+- text: Enchiladas Verdes $14.99
+- button "Editar"
+- button "Archivar"
+- text: Tacos de Carnitas (3) $11.99
+- button "Editar"
+- button "Archivar"
+- text: Burrito de Pollo $13.99
+- button "Editar"
+- button "Archivar"
+- text: Quesadilla de Queso $9.99
+- button "Editar"
+- button "Archivar"
+- text: Cerveza Corona $4.50
+- button "Editar"
+- button "Archivar"
+- text: Cerveza Modelo $4.50
+- button "Editar"
+- button "Archivar"
+- text: Agua de Horchata $3.99
+- button "Editar"
+- button "Archivar"
+- text: Agua de Jamaica $3.99
+- button "Editar"
+- button "Archivar"
+- text: Flan Napolitano $6.99
+- button "Editar"
+- button "Archivar"
+- text: Tres Leches $7.99
+- button "Editar"
+- button "Archivar"
+- text: Churros (6) $5.99
+- button "Editar"
+- button "Archivar"
+- button "Open Tanstack query devtools":
+  - img
