@@ -3,7 +3,10 @@
 # State:    /tmp/munch-verify-$RUN_ID   (scratch; removed by cleanup)
 # Evidence: /workspace/munch-verify-evidence/$RUN_ID (outside the repo; NEVER removed by cleanup)
 set -euo pipefail
-REPO="$(cd "$(dirname "$0")/../../../.." && pwd)"
+# Resolve symlinks (.cursor/skills/... and .claude/skills/... point at skills/verify-munch-app)
+SCRIPT_DIR="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd -P)"
+SKILL_DIR="$(cd "$SCRIPT_DIR/.." && pwd -P)"
+REPO="$(git -C "$SKILL_DIR" rev-parse --show-toplevel 2>/dev/null || (cd "$SKILL_DIR/../.." && pwd -P))"
 RUN_ID="${RUN_ID:-default}"
 RUN_DIR="/tmp/munch-verify-$RUN_ID"
 EVIDENCE_DIR="${EVIDENCE_DIR:-/workspace/munch-verify-evidence/$RUN_ID}"
@@ -92,6 +95,6 @@ cleanup() {
 case "${1:-}" in
   launch) launch ;; doctor) doctor ;; cleanup) cleanup ;; env) envfile ;;
   browser) shift; [ -f "$RUN_DIR/env" ] || { echo "not launched" >&2; exit 1; }
-           set -a; . "$RUN_DIR/env"; set +a; NODE_PATH="$TOOLS_DIR/node_modules" exec node "$(dirname "$0")/browser.mjs" "$@" ;;
+           set -a; . "$RUN_DIR/env"; set +a; NODE_PATH="$TOOLS_DIR/node_modules" exec node "$SCRIPT_DIR/browser.mjs" "$@" ;;
   *) echo "usage: RUN_ID=<id> munchctl launch|doctor|browser <journey.mjs>|env|cleanup"; exit 2 ;;
 esac

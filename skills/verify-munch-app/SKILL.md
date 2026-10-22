@@ -8,12 +8,12 @@ description: "Drive the Munch App (QR restaurant bill-splitting: Go/Gin backend 
 Primary surface: the **web UI** (React, mobile-first, Spanish copy) at `/login`, `/admin`, `/admin/menu`, `/admin/qr`, `/admin/pos`, `/admin/table/:tableId/pos`, `/menu`, `/check/:orderId`.
 Secondary surface: the **HTTP API** (`/health`, `/api/auth/login`, `/api/menu/items`, `/api/qr/create`, `/api/qr/:qrId`, `/api/orders/*`, `/ws/session`).
 
-Everything goes through one helper, `scripts/munchctl` (paths below are relative to this skill dir, `.cursor/skills/verify-munch-app/`). Always pick a unique `RUN_ID`.
+Everything goes through one helper, `scripts/munchctl` (paths below are relative to this skill dir, `skills/verify-munch-app/`; `.cursor/skills/verify-munch-app` and `.claude/skills/verify-munch-app` are symlinks to it, and `munchctl` resolves its own real location so any of the three paths works). Always pick a unique `RUN_ID`.
 
 ## Launch
 
 ```bash
-cd .cursor/skills/verify-munch-app
+cd skills/verify-munch-app        # or .cursor/skills/... / .claude/skills/... (symlinks)
 export RUN_ID=$(date +%s)            # unique per run
 scripts/munchctl launch              # prints READY + the env block on success
 ```
