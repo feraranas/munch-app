@@ -1,0 +1,38 @@
+import assert from 'node:assert/strict';
+
+export default async ({ page, login, shot, env, log }) => {
+  page.on('dialog', async dialog => { log(`dialog: ${dialog.message()}`); await dialog.dismiss(); });
+  await login();
+  await page.goto(`${env.WEB}/admin/qr`);
+  await page.getByPlaceholder('Ej: Mesa 1, Mesa A, Terraza 5').fill(`POS verify ${env.RUN_ID}`);
+  const qrResponse = page.waitForResponse(r => r.url().endsWith('/api/qr/create') && r.request().method() === 'POST');
+  await page.getByRole('button', { name: /Crear QR Permanente/ }).click();
+  const qr = await (await qrResponse).json();
+  assert.ok(qr.qrId);
+  await page.goto(`${env.WEB}/admin/pos?qrId=${qr.qrId}`);
+  await page.getByRole('button', { name: '+ Agregar', exact: true }).first().click();
+  await shot('before-create');
+  const created = page.waitForResponse(r => r.url().endsWith('/api/pos/order') && r.request().method() === 'POST');
+  await page.getByRole('button', { name: /Crear Orden/ }).click();
+  const response = await created;
+  assert.ok(response.ok(), `Create returned ${response.status()}`);
+  const order = await response.json();
+  assert.ok(order.id);
+  await page.getByText('¡Orden creada exitosamente!', { exact: false }).waitFor();
+  await shot('after-create');
+  let saved = await (await page.request.get(`${env.API}/api/qr/${qr.qrId}`)).json();
+  assert.equal(saved.order.id, order.id);
+  assert.equal(saved.order.items.length, 1);
+  await page.reload();
+  await page.getByText('Modificando orden existente', { exact: false }).waitFor();
+  await page.getByRole('button', { name: '+ Agregar', exact: true }).nth(1).click();
+  await shot('before-update');
+  const updated = page.waitForResponse(r => r.url().endsWith('/api/orders/update') && r.request().method() === 'PUT');
+  await page.getByRole('button', { name: /Actualizar Orden/ }).click();
+  assert.ok((await updated).ok(), 'Update failed');
+  saved = await (await page.request.get(`${env.API}/api/qr/${qr.qrId}`)).json();
+  assert.equal(saved.order.id, order.id);
+  assert.equal(saved.order.items.length, 2);
+  await shot('after-update');
+  log('Create and update succeeded; persisted order confirmed through public QR API.');
+};

@@ -2,15 +2,12 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import * as Sentry from '@sentry/react';
 import Logo from './Logo';
+import { createPOSOrder, updateOrder, fetchMenuItems as getMenuItems, fetchQRSession } from '../services/api';
 
 interface MenuItem {
   id: string;
   name: string;
   price: number;
-}
-
-interface MenuResponse {
-  items: MenuItem[];
 }
 
 interface SelectedItem {
@@ -37,25 +34,21 @@ const WaitstaffMenu: React.FC = () => {
     if (!qrId) return;
 
     try {
-      const response = await fetch(`http://localhost:8080/api/qr/${qrId}`);
+      const data = await fetchQRSession(qrId);
+      if (data.has_order && data.order) {
+        setExistingOrder(data.order);
+        setIsModifying(true);
 
-      if (response.ok) {
-        const data = await response.json();
-        if (data.has_order && data.order) {
-          setExistingOrder(data.order);
-          setIsModifying(true);
+        // Convert existing order items to selected items format
+        const existingItems: SelectedItem[] = data.order.items.map((item: any) => ({
+          id: item.id,
+          menuId: item.menuId,
+          name: item.name,
+          price: item.price,
+          qty: item.qty
+        }));
 
-          // Convert existing order items to selected items format
-          const existingItems: SelectedItem[] = data.order.items.map((item: any) => ({
-            id: item.id,
-            menuId: item.menuId,
-            name: item.name,
-            price: item.price,
-            qty: item.qty
-          }));
-
-          setSelectedItems(existingItems);
-        }
+        setSelectedItems(existingItems);
       }
     } catch (error) {
       console.error('Error loading existing order:', error);
@@ -72,13 +65,7 @@ const WaitstaffMenu: React.FC = () => {
 
   const fetchMenuItems = async () => {
     try {
-      const response = await fetch('http://localhost:8080/api/menu/items');
-      if (response.ok) {
-        const data: MenuResponse = await response.json();
-        setMenuItems(data.items);
-      } else {
-        console.error('Failed to fetch menu items');
-      }
+      setMenuItems(await getMenuItems());
     } catch (error) {
       console.error('Error fetching menu items:', error);
     } finally {
@@ -117,49 +104,27 @@ const WaitstaffMenu: React.FC = () => {
 
     setCreating(true);
     try {
-      // Choose endpoint based on whether we're modifying or creating
-      const endpoint = isModifying
-        ? 'http://localhost:8080/api/orders/update'
-        : 'http://localhost:8080/api/pos/order';
+      const payload = {
+        qrId: qrId.trim(),
+        selectedItems: selectedItems.map(item => ({
+          id: item.id,
+          menuId: item.menuId,
+          qty: item.qty
+        }))
+      };
+      const data = await (isModifying ? updateOrder(payload) : createPOSOrder(payload));
+      setCreatedOrderId(data.id);
+      setOrderCreated(true);
 
-      const method = isModifying ? 'PUT' : 'POST';
-
-      const response = await fetch(endpoint, {
-        method: method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          qrId: qrId.trim(),
-          selectedItems: selectedItems.map(item => ({
-            id: item.id,
-            menuId: item.menuId,
-            qty: item.qty
-          }))
-        }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setCreatedOrderId(data.id);
-        setOrderCreated(true);
-
-        // If we're modifying, update the existing order data
-        if (isModifying) {
-          setExistingOrder(data);
-        }
-
-        // Don't clear selection when modifying, so user can see the updated state
-        if (!isModifying) {
-          setSelectedItems([]);
-        }
+      if (isModifying) {
+        setExistingOrder(data);
       } else {
-        const errorData = await response.json();
-        alert(`Failed to ${isModifying ? 'update' : 'create'} order: ${errorData.error || 'Unknown error'}`);
+        setSelectedItems([]);
       }
     } catch (error) {
       console.error(`Error ${isModifying ? 'updating' : 'creating'} order:`, error);
-      alert('Error connecting to backend. Make sure the Go server is running on port 8080.');
+      const message = error instanceof Error ? error.message : 'Error de conexión con el servidor';
+      alert(`No se pudo ${isModifying ? 'actualizar' : 'crear'} la orden: ${message}`);
     } finally {
       setCreating(false);
     }
